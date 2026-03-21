@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: ''
+      working-directory:
+        description: 'Docker build context directory'
+        required: false
+        type: string
+        default: '.'
       trivy-severity:
         description: 'Comma-separated Trivy severity levels'
         required: false
@@ -44,12 +49,16 @@ jobs:
 
       - name: Build test stage
         run: |
+          args=""
+          while IFS= read -r arg; do
+            [ -n "$arg" ] && args="$args --build-arg $arg"
+          done <<< "${{ inputs.build-args }}"
           docker build \
             --target test \
             --tag ${{ inputs.image }}:test-${{ github.sha }} \
             --file ${{ inputs.containerfile }} \
-            ${{ inputs.build-args != '' && '--build-arg ' || '' }}${{ inputs.build-args }} \
-            .
+            $args \
+            ${{ inputs.working-directory }}
 
       - name: Build final image
         run: |
@@ -62,7 +71,7 @@ jobs:
             --tag ${{ inputs.image }}:${{ github.sha }} \
             --file ${{ inputs.containerfile }} \
             $args \
-            .
+            ${{ inputs.working-directory }}
 
       - name: Scan image for vulnerabilities
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1

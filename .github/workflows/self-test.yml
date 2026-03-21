@@ -52,3 +52,5 @@ jobs:
     with:
       image: hello-example
       push: false
+      containerfile: examples/hello/Containerfile
+      working-directory: examples/hello

@@ -10,8 +10,16 @@ fmt: ## Not applicable — workflow-only repo
 	@echo "INFO: No source code to format in this workflow-only repo."
 
 lint: ## Validate workflow YAML syntax
-	@command -v actionlint >/dev/null 2>&1 && actionlint || \
-	  python3 -c "import sys, glob, yaml; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]; print('YAML valid')"
+	@if command -v actionlint >/dev/null 2>&1; then \
+	  actionlint; \
+	else \
+	  python3 -c "import yaml" 2>/dev/null || { \
+	    echo "ERROR: actionlint not found and PyYAML (pyyaml) is not installed." >&2; \
+	    echo "Install actionlint or install PyYAML to enable the YAML lint fallback." >&2; \
+	    exit 1; \
+	  }; \
+	  python3 -c "import sys, glob, yaml; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]; print('YAML valid')"; \
+	fi
 
 test: ## Not applicable — workflows are tested by referencing repos
 	@echo "INFO: Workflows are validated by the repos that use them."

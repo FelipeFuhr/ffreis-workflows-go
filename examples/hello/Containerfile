@@ -1,4 +1,4 @@
-# Build stage
+# Builder stage
 FROM golang:1.22-alpine AS builder
 WORKDIR /src
 COPY go.mod ./
@@ -6,7 +6,11 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -o /hello .
 
+# Test stage
+FROM builder AS test
+RUN go test ./...
+
 # Final stage
-FROM scratch
+FROM scratch AS final
 COPY --from=builder /hello /hello
 ENTRYPOINT ["/hello"]
