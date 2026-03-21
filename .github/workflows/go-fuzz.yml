@@ -45,12 +45,6 @@ on:
         required: false
         type: string
         default: 'Fuzz'
-      run-extended:
-        description: 'Set to true to treat this as an extended (slow) fuzz run'
-        required: false
-        type: boolean
-        default: false
-
 permissions:
   contents: read
 
