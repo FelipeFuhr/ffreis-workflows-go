@@ -1,0 +1,119 @@
+name: Go Fuzz Testing
+
+# Reusable workflow — callers invoke via:
+#   uses: ffreis/ffreis-platform-workflows-go/.github/workflows/go-fuzz.yml@main
+#
+# CI mode (default): runs every Fuzz* target for a short fixed time.
+# This proves fuzz targets compile, seed corpus passes, and the code
+# does not immediately panic — without burning 30+ minutes in CI.
+#
+# Extended mode: set fuzz-time to "10m" or more for a deeper weekly run.
+#
+# Exit behaviour:
+#   - exit 0  → all fuzz targets passed their seed corpus + time limit
+#   - exit 1  → a target panicked or a new crasher was found
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version to use'
+        required: false
+        type: string
+        default: '1.22'
+      working-directory:
+        description: 'Directory containing go.mod'
+        required: false
+        type: string
+        default: '.'
+      packages:
+        description: 'Packages to scan for Fuzz* functions (space-separated)'
+        required: false
+        type: string
+        default: './...'
+      fuzz-time:
+        description: >
+          Per-target fuzz duration passed to -fuzztime.
+          Use "30s" for CI and "10m"+ for extended runs.
+        required: false
+        type: string
+        default: '30s'
+      fuzz-targets:
+        description: >
+          Regex of Fuzz* function names to run (passed to go test -list).
+          Default "Fuzz" runs every target whose name starts with "Fuzz".
+        required: false
+        type: string
+        default: 'Fuzz'
+      run-extended:
+        description: 'Set to true to treat this as an extended (slow) fuzz run'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Fuzz targets (${{ inputs.fuzz-time }} per target)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+
+      # Compile all packages (catches build errors before fuzzing)
+      - name: Build packages
+        run: go build ${{ inputs.packages }}
+
+      # Run seed corpus for every Fuzz* target (always fast — no mutation)
+      - name: Run seed corpus
+        run: |
+          set -euo pipefail
+          for pkg in $(go list ${{ inputs.packages }} 2>/dev/null); do
+            targets=$(go test -list '${{ inputs.fuzz-targets }}.*' "$pkg" 2>/dev/null \
+              | grep '^Fuzz' || true)
+            for target in $targets; do
+              echo "→ seed corpus: $pkg/$target"
+              go test -run="^${target}$" "$pkg"
+            done
+          done
+
+      # Run active fuzzing for fuzz-time per target
+      - name: Fuzz each target
+        run: |
+          set -euo pipefail
+          failed=0
+          for pkg in $(go list ${{ inputs.packages }} 2>/dev/null); do
+            targets=$(go test -list '${{ inputs.fuzz-targets }}.*' "$pkg" 2>/dev/null \
+              | grep '^Fuzz' || true)
+            for target in $targets; do
+              echo "→ fuzzing: $pkg/$target for ${{ inputs.fuzz-time }}"
+              go test \
+                -run='^$' \
+                -fuzz="^${target}$" \
+                -fuzztime="${{ inputs.fuzz-time }}" \
+                "$pkg" || failed=1
+            done
+          done
+          exit "$failed"
+
+      # Upload any crashers found during the run
+      - name: Upload fuzz crashers
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashers
+          path: |
+            ${{ inputs.working-directory }}/**/testdata/fuzz/**/
+          retention-days: 30
+          if-no-files-found: ignore

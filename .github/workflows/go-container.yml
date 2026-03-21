@@ -1,0 +1,86 @@
+name: Go Container Build
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: 'Full image name (e.g. ghcr.io/ffreis/my-service)'
+        required: true
+        type: string
+      containerfile:
+        description: 'Path to the Containerfile/Dockerfile'
+        required: false
+        type: string
+        default: 'Containerfile'
+      build-args:
+        description: 'Newline-separated docker build-arg pairs (KEY=VALUE)'
+        required: false
+        type: string
+        default: ''
+      trivy-severity:
+        description: 'Comma-separated Trivy severity levels'
+        required: false
+        type: string
+        default: 'HIGH,CRITICAL'
+      push:
+        description: 'Push image to registry (only effective on main branch pushes)'
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      REGISTRY_TOKEN:
+        description: 'Token for pushing to the container registry (GITHUB_TOKEN is fine for GHCR)'
+        required: false
+
+jobs:
+  container:
+    name: Container (build + scan + push)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build test stage
+        run: |
+          docker build \
+            --target test \
+            --tag ${{ inputs.image }}:test-${{ github.sha }} \
+            --file ${{ inputs.containerfile }} \
+            ${{ inputs.build-args != '' && '--build-arg ' || '' }}${{ inputs.build-args }} \
+            .
+
+      - name: Build final image
+        run: |
+          args=""
+          while IFS= read -r arg; do
+            [ -n "$arg" ] && args="$args --build-arg $arg"
+          done <<< "${{ inputs.build-args }}"
+          docker build \
+            --target final \
+            --tag ${{ inputs.image }}:${{ github.sha }} \
+            --file ${{ inputs.containerfile }} \
+            $args \
+            .
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: ${{ inputs.image }}:${{ github.sha }}
+          format: table
+          exit-code: '1'
+          severity: ${{ inputs.trivy-severity }}
+
+      - name: Login to GHCR
+        if: inputs.push && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          token="${{ secrets.REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}"
+          echo "${token}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push image
+        if: inputs.push && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          docker push ${{ inputs.image }}:${{ github.sha }}
+          docker tag ${{ inputs.image }}:${{ github.sha }} ${{ inputs.image }}:latest
+          docker push ${{ inputs.image }}:latest

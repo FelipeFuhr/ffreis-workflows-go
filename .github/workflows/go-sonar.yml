@@ -1,0 +1,95 @@
+name: Go SonarCloud
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version'
+        required: false
+        type: string
+        default: '1.22'
+      working-directory:
+        description: 'Directory containing the Go module'
+        required: false
+        type: string
+        default: '.'
+      sonar-project-key:
+        description: 'SonarCloud project key (defaults to repository name)'
+        required: false
+        type: string
+        default: ''
+      sonar-organization:
+        description: 'SonarCloud organization slug'
+        required: false
+        type: string
+        default: ''
+      coverage-artifact-name:
+        description: 'Name of the coverage artifact uploaded by go-test.yml'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      SONAR_TOKEN:
+        required: true
+
+jobs:
+  sonar:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    if: vars.SONAR_ENABLED != 'false'
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+
+      - name: Verify SonarCloud credentials
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "${SONAR_TOKEN}" ]; then
+            echo "::error title=SonarCloud not configured::Missing: SONAR_TOKEN secret"
+            echo "Add at: Settings → Secrets and variables → Actions → New secret"
+            echo "To skip: Settings → Variables → add SONAR_ENABLED=false"
+            exit 1
+          fi
+
+      - name: Download coverage artifact
+        if: inputs.coverage-artifact-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.coverage-artifact-name }}
+          path: ${{ inputs.working-directory }}
+
+      - name: Generate coverage (if no artifact)
+        if: inputs.coverage-artifact-name == ''
+        run: |
+          go test ./... \
+            -coverprofile=coverage.out \
+            -covermode=atomic \
+            -count=1 \
+            -timeout=120s
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          projectBaseDir: ${{ inputs.working-directory }}
+          args: >
+            -Dsonar.projectKey=${{ inputs.sonar-project-key || github.event.repository.name }}
+            -Dsonar.organization=${{ inputs.sonar-organization || vars.SONAR_ORGANIZATION }}
+            -Dsonar.go.coverage.reportPaths=coverage.out
+            -Dsonar.sources=.
+            -Dsonar.exclusions=vendor/**,**/*_test.go
+            -Dsonar.tests=.
+            -Dsonar.test.inclusions=**/*_test.go
