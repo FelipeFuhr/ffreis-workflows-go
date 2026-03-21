@@ -1,0 +1,54 @@
+name: Self Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Validates that every workflow defined in this library functions correctly
+# against the minimal example app in examples/hello/.
+#
+# go-sonar is intentionally excluded: it requires a SONAR_TOKEN secret that
+# is only available in the upstream project context.
+
+jobs:
+  fmt:
+    uses: ./.github/workflows/go-fmt.yml
+    with:
+      working-directory: examples/hello
+
+  lint:
+    uses: ./.github/workflows/go-lint.yml
+    with:
+      working-directory: examples/hello
+
+  build:
+    uses: ./.github/workflows/go-build.yml
+    with:
+      working-directory: examples/hello
+
+  test:
+    uses: ./.github/workflows/go-test.yml
+    with:
+      working-directory: examples/hello
+
+  fuzz:
+    uses: ./.github/workflows/go-fuzz.yml
+    with:
+      working-directory: examples/hello
+      fuzz-targets: FuzzParseExpr
+      fuzz-time: 10s
+
+  mutation:
+    uses: ./.github/workflows/go-mutation.yml
+    with:
+      working-directory: examples/hello
+      packages: ./calculator/...
+      threshold: 50
+
+  container:
+    uses: ./.github/workflows/go-container.yml
+    with:
+      image: hello-example
+      push: false
