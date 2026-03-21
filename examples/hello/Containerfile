@@ -1,16 +1,19 @@
-# Builder stage
-FROM golang:1.22-alpine AS builder
+# Base: dependencies cached separately from source
+FROM golang:1.22-alpine AS base
 WORKDIR /src
 COPY go.mod ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -o /hello .
 
-# Test stage
-FROM builder AS test
+# Test stage: runs all tests — required by go-container.yml (--target test)
+FROM base AS test
 RUN go test ./...
 
-# Final stage
+# Builder stage: compiles the release binary
+FROM base AS builder
+RUN CGO_ENABLED=0 go build -trimpath -o /hello .
+
+# Final stage: minimal runtime image — required by go-container.yml (--target final)
 FROM scratch AS final
 COPY --from=builder /hello /hello
 ENTRYPOINT ["/hello"]
