@@ -9,8 +9,9 @@ on:
 # Validates that every workflow defined in this library functions correctly
 # against the minimal example app in examples/hello/.
 #
-# go-sonar is intentionally excluded: it requires a SONAR_TOKEN secret that
-# is only available in the upstream project context.
+# go-sonar and go-coverage skip their scan/upload steps when the respective
+# secret (SONAR_TOKEN / CODECOV_TOKEN) is not configured, so all workflows
+# are always exercised in CI.
 
 jobs:
   fmt:
@@ -46,6 +47,35 @@ jobs:
       working-directory: examples/hello
       packages: ./calculator/...
       threshold: 50
+
+  sonar:
+    uses: ./.github/workflows/go-sonar.yml
+    with:
+      working-directory: examples/hello
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  security:
+    uses: ./.github/workflows/go-security.yml
+    with:
+      working-directory: examples/hello
+
+  coverage:
+    uses: ./.github/workflows/go-coverage.yml
+    with:
+      working-directory: examples/hello
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  docs:
+    uses: ./.github/workflows/go-docs.yml
+    with:
+      working-directory: examples/hello
+
+  semgrep:
+    uses: ./.github/workflows/go-semgrep.yml
+    with:
+      working-directory: examples/hello
 
   container:
     uses: ./.github/workflows/go-container.yml

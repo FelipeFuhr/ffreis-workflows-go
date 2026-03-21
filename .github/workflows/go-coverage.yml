@@ -1,0 +1,88 @@
+name: Go Coverage (Codecov)
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: "Go version to use"
+        type: string
+        default: "1.22"
+      working-directory:
+        description: "Directory containing the Go module"
+        type: string
+        default: "."
+      test-timeout:
+        description: "Timeout passed to go test -timeout"
+        type: string
+        default: "120s"
+      coverage-threshold:
+        description: "Minimum line coverage percentage (0 = no gate)"
+        type: number
+        default: 0
+      codecov-flags:
+        description: "Codecov flags"
+        type: string
+        default: "unit"
+      codecov-name:
+        description: "Codecov report name"
+        type: string
+        default: "unit-coverage"
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Coverage (go test + Codecov)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+
+      - name: Run tests with coverage
+        run: |
+          set -euo pipefail
+          go test ./... \
+            -coverprofile=coverage.out \
+            -covermode=atomic \
+            -count=1 \
+            -timeout=${{ inputs.test-timeout }}
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
+
+      - name: Enforce coverage threshold
+        if: ${{ inputs.coverage-threshold > 0 }}
+        run: |
+          set -euo pipefail
+          THRESHOLD=${{ inputs.coverage-threshold }}
+          PCT=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
+          echo "Line coverage: ${PCT}% (threshold: ${THRESHOLD}%)"
+          awk "BEGIN { exit (${PCT} < ${THRESHOLD}) ? 1 : 0 }" || {
+            echo "::error::Coverage ${PCT}% is below the required threshold of ${THRESHOLD}%"
+            exit 1
+          }
+
+      - name: Upload coverage to Codecov
+        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de
+        with:
+          files: coverage.out
+          flags: ${{ inputs.codecov-flags }}
+          name: ${{ inputs.codecov-name }}
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
