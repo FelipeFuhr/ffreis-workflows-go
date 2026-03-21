@@ -30,7 +30,7 @@ on:
         default: ''
     secrets:
       SONAR_TOKEN:
-        required: false
+        required: true
 
 jobs:
   sonar:
@@ -51,27 +51,15 @@ jobs:
           cache: true
           cache-dependency-path: ${{ inputs.working-directory }}/go.sum
 
-      - name: Check SonarCloud token
-        id: sonar_gate
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          if [ -z "${SONAR_TOKEN}" ]; then
-            echo "::notice title=SonarCloud::SONAR_TOKEN not set — skipping scan. Add the secret to enable."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Download coverage artifact
-        if: steps.sonar_gate.outputs.skip != 'true' && inputs.coverage-artifact-name != ''
+        if: inputs.coverage-artifact-name != ''
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.coverage-artifact-name }}
           path: ${{ inputs.working-directory }}
 
       - name: Generate coverage (if no artifact)
-        if: steps.sonar_gate.outputs.skip != 'true' && inputs.coverage-artifact-name == ''
+        if: inputs.coverage-artifact-name == ''
         run: |
           go test ./... \
             -coverprofile=coverage.out \
@@ -80,7 +68,6 @@ jobs:
             -timeout=120s
 
       - name: SonarCloud Scan
-        if: steps.sonar_gate.outputs.skip != 'true'
         uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # nosemgrep: generic.secrets.security.detected-sonarqube-docs-api-key
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
