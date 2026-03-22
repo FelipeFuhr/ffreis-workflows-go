@@ -1,3 +1,4 @@
+// Package main is a simple calculator CLI that evaluates arithmetic expressions.
 package main
 
 import (

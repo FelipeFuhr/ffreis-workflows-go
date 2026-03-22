@@ -6,7 +6,7 @@ on:
       go-version:
         description: "Go version to use"
         type: string
-        default: "1.22"
+        default: "1.24"
       working-directory:
         description: "Directory containing the Go module"
         type: string
@@ -53,26 +53,29 @@ jobs:
           cache-dependency-path: ${{ inputs.working-directory }}/go.sum
 
       - name: Run tests with coverage
+        env:
+          TEST_TIMEOUT: ${{ inputs.test-timeout }}
         run: |
           set -euo pipefail
           go test ./... \
             -coverprofile=coverage.out \
             -covermode=atomic \
             -count=1 \
-            -timeout=${{ inputs.test-timeout }}
+            -timeout="$TEST_TIMEOUT"
 
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -1
 
       - name: Enforce coverage threshold
         if: ${{ inputs.coverage-threshold > 0 }}
+        env:
+          COVERAGE_THRESHOLD: ${{ inputs.coverage-threshold }}
         run: |
           set -euo pipefail
-          THRESHOLD=${{ inputs.coverage-threshold }}
           PCT=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
-          echo "Line coverage: ${PCT}% (threshold: ${THRESHOLD}%)"
-          awk "BEGIN { exit (${PCT} < ${THRESHOLD}) ? 1 : 0 }" || {
-            echo "::error::Coverage ${PCT}% is below the required threshold of ${THRESHOLD}%"
+          echo "Line coverage: ${PCT}% (threshold: ${COVERAGE_THRESHOLD}%)"
+          awk "BEGIN { exit (${PCT} < ${COVERAGE_THRESHOLD}) ? 1 : 0 }" || {
+            echo "::error::Coverage ${PCT}% is below the required threshold of ${COVERAGE_THRESHOLD}%"
             exit 1
           }
 

@@ -7,7 +7,7 @@ on:
         description: 'Go version'
         required: false
         type: string
-        default: '1.22'
+        default: '1.24'
       working-directory:
         description: 'Directory containing the Go module'
         required: false
@@ -50,6 +50,8 @@ jobs:
           cache: true
           cache-dependency-path: ${{ inputs.working-directory }}/go.sum
       - name: Run tests
+        env:
+          TEST_TIMEOUT: ${{ inputs.test-timeout }}
         run: |
           go test ./... \
             -v \
@@ -57,7 +59,7 @@ jobs:
             -count=1 \
             -coverprofile=coverage.out \
             -covermode=atomic \
-            -timeout=${{ inputs.test-timeout }}
+            -timeout="$TEST_TIMEOUT"
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -1
       - name: Upload coverage artifact

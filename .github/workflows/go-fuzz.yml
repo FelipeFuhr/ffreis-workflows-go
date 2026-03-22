@@ -20,7 +20,7 @@ on:
         description: 'Go version to use'
         required: false
         type: string
-        default: '1.22'
+        default: '1.24'
       working-directory:
         description: 'Directory containing go.mod'
         required: false
@@ -67,14 +67,19 @@ jobs:
 
       # Compile all packages (catches build errors before fuzzing)
       - name: Build packages
-        run: go build ${{ inputs.packages }}
+        env:
+          PACKAGES: ${{ inputs.packages }}
+        run: go build $PACKAGES
 
       # Run seed corpus for every Fuzz* target (always fast — no mutation)
       - name: Run seed corpus
+        env:
+          PACKAGES: ${{ inputs.packages }}
+          FUZZ_TARGETS: ${{ inputs.fuzz-targets }}
         run: |
           set -euo pipefail
-          for pkg in $(go list ${{ inputs.packages }} 2>/dev/null); do
-            targets=$(go test -list '${{ inputs.fuzz-targets }}.*' "$pkg" 2>/dev/null \
+          for pkg in $(go list $PACKAGES 2>/dev/null); do
+            targets=$(go test -list "${FUZZ_TARGETS}.*" "$pkg" 2>/dev/null \
               | grep '^Fuzz' || true)
             for target in $targets; do
               echo "→ seed corpus: $pkg/$target"
@@ -84,18 +89,22 @@ jobs:
 
       # Run active fuzzing for fuzz-time per target
       - name: Fuzz each target
+        env:
+          PACKAGES: ${{ inputs.packages }}
+          FUZZ_TARGETS: ${{ inputs.fuzz-targets }}
+          FUZZ_TIME: ${{ inputs.fuzz-time }}
         run: |
           set -euo pipefail
           failed=0
-          for pkg in $(go list ${{ inputs.packages }} 2>/dev/null); do
-            targets=$(go test -list '${{ inputs.fuzz-targets }}.*' "$pkg" 2>/dev/null \
+          for pkg in $(go list $PACKAGES 2>/dev/null); do
+            targets=$(go test -list "${FUZZ_TARGETS}.*" "$pkg" 2>/dev/null \
               | grep '^Fuzz' || true)
             for target in $targets; do
-              echo "→ fuzzing: $pkg/$target for ${{ inputs.fuzz-time }}"
+              echo "→ fuzzing: $pkg/$target for $FUZZ_TIME"
               go test \
                 -run='^$' \
                 -fuzz="^${target}$" \
-                -fuzztime="${{ inputs.fuzz-time }}" \
+                -fuzztime="$FUZZ_TIME" \
                 "$pkg" || failed=1
             done
           done

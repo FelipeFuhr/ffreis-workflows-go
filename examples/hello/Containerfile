@@ -1,5 +1,5 @@
 # Base: dependencies cached separately from source
-FROM golang:1.22-alpine AS base
+FROM golang:1.24-alpine AS base
 WORKDIR /src
 COPY go.mod ./
 RUN go mod download
