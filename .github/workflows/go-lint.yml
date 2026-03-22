@@ -12,7 +12,7 @@ on:
         description: 'golangci-lint version'
         required: false
         type: string
-        default: 'v1.57.2'
+        default: 'latest'
       working-directory:
         description: 'Directory to run lint in'
         required: false
