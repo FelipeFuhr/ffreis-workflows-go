@@ -17,7 +17,7 @@ on:
         description: 'Go version to use'
         required: false
         type: string
-        default: '1.24'
+        default: '1.25'
       working-directory:
         description: 'Directory containing go.mod'
         required: false
@@ -27,7 +27,7 @@ on:
         description: 'Packages to mutate (space-separated), e.g. "./internal/engine/... ./internal/rule/..."'
         required: false
         type: string
-        default: './internal/...'
+        default: './internal'
       threshold:
         description: 'Minimum mutation efficacy score (0–100). CI fails if score is below this.'
         required: false

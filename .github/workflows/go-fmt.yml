@@ -7,7 +7,7 @@ on:
         description: 'Go version (e.g. "1.22")'
         required: false
         type: string
-        default: '1.24'
+        default: '1.25'
       working-directory:
         description: 'Directory to run gofmt in'
         required: false

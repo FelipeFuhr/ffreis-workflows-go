@@ -50,7 +50,7 @@ jobs:
     uses: ./.github/workflows/go-mutation.yml
     with:
       working-directory: examples/hello
-      packages: ./calculator/...
+      packages: ./calculator
       threshold: 50
 
   sonar:
