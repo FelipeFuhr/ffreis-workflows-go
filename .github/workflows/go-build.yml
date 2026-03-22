@@ -1,0 +1,34 @@
+name: Go Build (Validate)
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version'
+        required: false
+        type: string
+        default: '1.25'
+      working-directory:
+        description: 'Directory containing the Go module'
+        required: false
+        type: string
+        default: '.'
+
+jobs:
+  build:
+    name: Build (go vet + go build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+      - name: go vet
+        run: go vet ./...
+      - name: go build
+        run: go build ./...

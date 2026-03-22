@@ -1,0 +1,39 @@
+name: Go Format Check
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version (e.g. "1.22")'
+        required: false
+        type: string
+        default: '1.25'
+      working-directory:
+        description: 'Directory to run gofmt in'
+        required: false
+        type: string
+        default: '.'
+
+jobs:
+  fmt:
+    name: Format (gofmt)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error title=Formatting required::The following files need gofmt:"
+            printf "%s\n" $unformatted
+            echo "Fix with: gofmt -w ."
+            exit 1
+          fi

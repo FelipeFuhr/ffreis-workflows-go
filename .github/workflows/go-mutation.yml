@@ -1,0 +1,120 @@
+name: Go Mutation Testing
+
+# Reusable workflow — callers invoke via:
+#   uses: ffreis/ffreis-platform-workflows-go/.github/workflows/go-mutation.yml@main
+#
+# Intended schedule: weekly (Sunday 02:00 UTC) or workflow_dispatch.
+# Do NOT run on every PR — mutation testing takes 5–30 min per repo.
+#
+# Exit behaviour:
+#   - exit 0  → mutation score ≥ threshold   (pass)
+#   - exit 1  → mutation score  < threshold  (fail CI)
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version to use'
+        required: false
+        type: string
+        default: '1.25'
+      working-directory:
+        description: 'Directory containing go.mod'
+        required: false
+        type: string
+        default: '.'
+      packages:
+        description: 'Packages to mutate (space-separated), e.g. "./internal/engine/... ./internal/rule/..."'
+        required: false
+        type: string
+        default: './internal'
+      threshold:
+        description: 'Minimum mutation efficacy score (0–100). CI fails if score is below this.'
+        required: false
+        type: number
+        default: 60
+      gremlins-version:
+        description: 'gremlins version tag to install, e.g. "v0.5.0". Defaults to latest.'
+        required: false
+        type: string
+        default: 'latest'
+    outputs:
+      mutation-score:
+        description: 'Achieved mutation efficacy score (integer, 0–100)'
+        value: ${{ jobs.mutation.outputs.score }}
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    name: Mutation score (gremlins)
+    runs-on: ubuntu-latest
+    outputs:
+      score: ${{ steps.run.outputs.score }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+
+      # Build the test binary cache before gremlins starts mutating —
+      # avoids redundant compilation on every mutant.
+      - name: Pre-build test binary cache
+        env:
+          PACKAGES: ${{ inputs.packages }}
+        run: go test -run='^$' $PACKAGES 2>/dev/null || true
+
+      - name: Install gremlins
+        env:
+          GREMLINS_VERSION: ${{ inputs.gremlins-version }}
+        run: |
+          set -euo pipefail
+          if [ "$GREMLINS_VERSION" = "latest" ]; then
+            go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
+          else
+            go install github.com/go-gremlins/gremlins/cmd/gremlins@"$GREMLINS_VERSION"
+          fi
+
+      - name: Run mutation testing
+        id: run
+        env:
+          THRESHOLD: ${{ inputs.threshold }}
+          PACKAGES: ${{ inputs.packages }}
+        run: |
+          set -euo pipefail
+
+          # gremlins exits 1 if efficacy < threshold, 0 otherwise
+          # Capture output so we can extract the score for the job output
+          output=$(gremlins unleash \
+            --threshold-efficacy="$THRESHOLD" \
+            $PACKAGES 2>&1) || exit_code=$?
+
+          echo "$output"
+
+          # Extract score from gremlins summary line: "Efficacy: XX.XX%"
+          score=$(echo "$output" | grep -oE 'Efficacy:[[:space:]]+[0-9]+' | grep -oE '[0-9]+' | head -1 || echo "0")
+          echo "score=${score}" >> "$GITHUB_OUTPUT"
+
+          echo "::notice title=Mutation Score::Efficacy: ${score}% (threshold: ${THRESHOLD}%)"
+
+          exit "${exit_code:-0}"
+
+      - name: Annotate score
+        if: always()
+        env:
+          SCORE: ${{ steps.run.outputs.score }}
+          THRESHOLD: ${{ inputs.threshold }}
+        run: |
+          if [[ "${SCORE:-0}" -lt "$THRESHOLD" ]]; then
+            echo "::error title=Mutation Score Too Low::Score ${SCORE}% is below threshold ${THRESHOLD}%. Add tests that kill more mutants."
+          else
+            echo "::notice title=Mutation Score OK::Score ${SCORE}% ≥ threshold ${THRESHOLD}%."
+          fi

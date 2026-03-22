@@ -1,0 +1,55 @@
+name: Go Docs (godoc)
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: "Go version to use"
+        type: string
+        default: "1.25"
+      working-directory:
+        description: "Directory containing the Go module"
+        type: string
+        default: "."
+      require-package-docs:
+        description: "Fail if any package is missing a package-level doc comment"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    name: godoc check
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+
+      - name: Check package-level doc comments
+        if: ${{ inputs.require-package-docs }}
+        run: |
+          set -euo pipefail
+          missing=$(go list -f '{{if not .Doc}}{{.ImportPath}}{{end}}' ./... | grep -v '^$' || true)
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing doc comments::The following packages are missing package-level doc comments:"
+            echo "$missing"
+            exit 1
+          fi
+          echo "All packages have package-level doc comments."
+
+      - name: Verify go vet (doc-related checks)
+        run: |
+          set -euo pipefail
+          go vet ./...

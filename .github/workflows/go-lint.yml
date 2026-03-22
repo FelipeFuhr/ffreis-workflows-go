@@ -1,0 +1,48 @@
+name: Go Lint
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version'
+        required: false
+        type: string
+        default: '1.25'
+      golangci-lint-version:
+        description: 'golangci-lint version'
+        required: false
+        type: string
+        default: 'latest'
+      working-directory:
+        description: 'Directory to run lint in'
+        required: false
+        type: string
+        default: '.'
+      lint-args:
+        description: 'Additional args passed to golangci-lint'
+        required: false
+        type: string
+        default: '--timeout=5m'
+
+jobs:
+  lint:
+    name: Lint (vet + golangci-lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+      - name: go vet
+        run: go vet ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: ${{ inputs.golangci-lint-version }}
+          args: ${{ inputs.lint-args }}
+          working-directory: ${{ inputs.working-directory }}

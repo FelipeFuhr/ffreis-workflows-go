@@ -1,0 +1,33 @@
+name: Go Security (govulncheck)
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: "Go version to use"
+        type: string
+        default: "1.25"
+      working-directory:
+        description: "Directory containing the Go module"
+        type: string
+        default: "."
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: ${{ inputs.go-version }}
+          check-latest: true
+          work-dir: ${{ inputs.working-directory }}
