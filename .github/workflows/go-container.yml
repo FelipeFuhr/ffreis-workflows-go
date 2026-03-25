@@ -97,9 +97,9 @@ jobs:
         if: inputs.push && github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
           ACTOR: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          token="${{ secrets.REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}"
-          echo "${token}" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          echo "${REGISTRY_TOKEN}" | docker login ghcr.io -u "$ACTOR" --password-stdin
 
       - name: Push image
         if: inputs.push && github.ref == 'refs/heads/main' && github.event_name == 'push'

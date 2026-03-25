@@ -17,8 +17,22 @@ permissions:
 # go-sonar requires SONAR_TOKEN to be configured in the repository. The job
 # is skipped on fork pull requests (secrets are not available to forks), but
 # runs on all other events and fails if the token is absent.
+#
+# go-sonarqube requires SONAR_TOKEN and SONAR_HOST_URL to be configured in the
+# repository. The job is skipped on fork pull requests, but runs on all other
+# events and fails if either secret is absent.
+#
+# go-deepsource-coverage requires DEEPSOURCE_DSN to be configured in the repository.
+# The job is skipped on fork pull requests.
+#
+# go-snyk requires SNYK_TOKEN to be configured in the repository. The job is
+# skipped on fork pull requests, but runs on all other events and fails if the
+# token is absent.
 
 jobs:
+  workflows-policy:
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@cd834ffd19f4cf2cef228d8f261db82768e88348
+
   fmt:
     uses: ./.github/workflows/go-fmt.yml
     with:
@@ -61,6 +75,16 @@ jobs:
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+  sonarqube:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    uses: ./.github/workflows/go-sonarqube.yml
+    with:
+      working-directory: examples/hello
+      sonar-project-key: ffreis-workflows-go-self-test
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
   security:
     uses: ./.github/workflows/go-security.yml
     with:
@@ -83,6 +107,12 @@ jobs:
     with:
       working-directory: examples/hello
 
+  semgrep-sarif:
+    uses: ./.github/workflows/go-semgrep-sarif.yml
+    with:
+      working-directory: examples/hello
+      upload-sarif: true
+
   container:
     uses: ./.github/workflows/go-container.yml
     with:
@@ -90,3 +120,33 @@ jobs:
       push: false
       containerfile: examples/hello/Containerfile
       working-directory: examples/hello
+
+  mod-tidy:
+    uses: ./.github/workflows/go-mod-tidy-check.yml
+    with:
+      working-directory: examples/hello
+
+  snyk:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    uses: ./.github/workflows/go-snyk.yml
+    with:
+      working-directory: examples/hello
+      upload-sarif: false
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  deepsource-coverage:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    uses: ./.github/workflows/go-deepsource-coverage.yml
+    with:
+      working-directory: examples/hello
+    secrets:
+      DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
+
+  cross-build-matrix:
+    uses: ./.github/workflows/go-cross-build-matrix.yml
+    with:
+      go-version: "1.25.8"
+      working-directory: examples/hello
+      targets: |-
+        ./...

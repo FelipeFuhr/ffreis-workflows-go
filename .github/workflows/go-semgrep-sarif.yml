@@ -1,0 +1,58 @@
+name: Go SAST (Semgrep + SARIF)
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "Directory to scan"
+        type: string
+        default: "."
+      config:
+        description: "Semgrep config/ruleset (e.g. auto, p/golang)"
+        type: string
+        default: "p/golang"
+      semgrep-version:
+        description: "Semgrep version to install (e.g. 1.99.0)"
+        type: string
+        default: "1.99.0"
+      upload-sarif:
+        description: "Upload SARIF to GitHub code scanning"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install semgrep
+        env:
+          SEMGREP_VERSION: ${{ inputs.semgrep-version }}
+        run: pip install "semgrep==$SEMGREP_VERSION"
+
+      - name: Run semgrep
+        env:
+          SEMGREP_CONFIG: ${{ inputs.config }}
+        run: |
+          set -euo pipefail
+          semgrep scan --config "$SEMGREP_CONFIG" --sarif --output semgrep.sarif .
+          test -s semgrep.sarif
+
+      - name: Upload SARIF
+        if: inputs.upload-sarif && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+        uses: github/codeql-action/upload-sarif@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v4
+        with:
+          sarif_file: ${{ inputs.working-directory }}/semgrep.sarif
+          category: semgrep
+

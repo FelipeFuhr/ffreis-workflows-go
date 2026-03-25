@@ -1,7 +1,7 @@
 name: Go Fuzz Testing
 
 # Reusable workflow — callers invoke via:
-#   uses: ffreis/ffreis-platform-workflows-go/.github/workflows/go-fuzz.yml@main
+#   uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fuzz.yml@main
 #
 # CI mode (default): runs every Fuzz* target for a short fixed time.
 # This proves fuzz targets compile, seed corpus passes, and the code
