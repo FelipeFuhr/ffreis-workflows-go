@@ -34,8 +34,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        goos: ${{ fromJSON(format('["{0}"]', join(split(inputs.goos, ','), '","'))) }}
-        goarch: ${{ fromJSON(format('["{0}"]', join(split(inputs.goarch, ','), '","'))) }}
+        goos: ${{ fromJSON(format('["{0}"]', join(split(replace(inputs.goos, ' ', ''), ','), '","'))) }}
+        goarch: ${{ fromJSON(format('["{0}"]', join(split(replace(inputs.goarch, ' ', ''), ','), '","'))) }}
 
     defaults:
       run:

@@ -13,11 +13,21 @@ on:
         required: false
         type: number
         default: 22
+      snyk-version:
+        description: "Snyk CLI version to install (e.g. 1.1291.0)"
+        required: false
+        type: string
+        default: "1.1291.0"
       upload-sarif:
         description: "Upload SARIF to GitHub code scanning"
         required: false
         type: boolean
         default: true
+      fail-on-issues:
+        description: "Fail the workflow if Snyk finds vulnerabilities (default: false — results are uploaded as SARIF only)"
+        required: false
+        type: boolean
+        default: false
     secrets:
       SNYK_TOKEN:
         description: "Snyk API token"
@@ -45,14 +55,21 @@ jobs:
           node-version: ${{ inputs.node-version }}
 
       - name: Install Snyk
-        run: npm install -g snyk
+        env:
+          SNYK_VERSION: ${{ inputs.snyk-version }}
+        run: npm install -g "snyk@$SNYK_VERSION"
 
       - name: Snyk OSS Test (Go)
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          FAIL_ON_ISSUES: ${{ inputs.fail-on-issues }}
         run: |
           set -euo pipefail
-          snyk test --file=go.mod --sarif-file-output=snyk.sarif || true
+          if [ "$FAIL_ON_ISSUES" = "true" ]; then
+            snyk test --file=go.mod --sarif-file-output=snyk.sarif
+          else
+            snyk test --file=go.mod --sarif-file-output=snyk.sarif || true
+          fi
           test -s snyk.sarif
 
       - name: Upload SARIF

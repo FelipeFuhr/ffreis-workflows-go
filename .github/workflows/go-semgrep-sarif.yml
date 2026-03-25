@@ -11,6 +11,10 @@ on:
         description: "Semgrep config/ruleset (e.g. auto, p/golang)"
         type: string
         default: "p/golang"
+      semgrep-version:
+        description: "Semgrep version to install (e.g. 1.99.0)"
+        type: string
+        default: "1.99.0"
       upload-sarif:
         description: "Upload SARIF to GitHub code scanning"
         type: boolean
@@ -33,7 +37,9 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install semgrep
-        run: pip install semgrep
+        env:
+          SEMGREP_VERSION: ${{ inputs.semgrep-version }}
+        run: pip install "semgrep==$SEMGREP_VERSION"
 
       - name: Run semgrep
         env:
