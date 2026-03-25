@@ -22,6 +22,7 @@ jobs:
   deepsource:
     name: DeepSource
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}

@@ -19,8 +19,16 @@ permissions:
 # is skipped on fork pull requests (secrets are not available to forks), but
 # runs on all other events and fails if the token is absent.
 #
+# go-sonarqube requires SONAR_TOKEN and SONAR_HOST_URL to be configured in the
+# repository. The job is skipped on fork pull requests, but runs on all other
+# events and fails if either secret is absent.
+#
 # go-deepsource-coverage requires DEEPSOURCE_DSN to be configured in the repository.
 # The job is skipped on fork pull requests.
+#
+# go-snyk requires SNYK_TOKEN to be configured in the repository. The job is
+# skipped on fork pull requests, but runs on all other events and fails if the
+# token is absent.
 
 jobs:
   workflows-policy:
