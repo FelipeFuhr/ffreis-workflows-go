@@ -13,11 +13,21 @@ on:
         required: false
         type: string
         default: '.'
+      test-tags:
+        description: 'Build tags passed to go test via -tags'
+        required: false
+        type: string
+        default: ''
       test-timeout:
         description: 'Timeout passed to go test -timeout'
         required: false
         type: string
         default: '120s'
+      extra-test-args:
+        description: 'Newline-separated extra args appended to go test (one arg per line)'
+        required: false
+        type: string
+        default: ''
       run-govulncheck:
         description: 'Run govulncheck after tests'
         required: false
@@ -43,34 +53,53 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: ${{ inputs.go-version }}
           cache: true
           cache-dependency-path: ${{ inputs.working-directory }}/go.sum
       - name: Run tests
         env:
+          TEST_TAGS: ${{ inputs.test-tags }}
           TEST_TIMEOUT: ${{ inputs.test-timeout }}
+          EXTRA_TEST_ARGS: ${{ inputs.extra-test-args }}
         run: |
+          set -euo pipefail
+
+          extra_args=()
+          if [ -n "$EXTRA_TEST_ARGS" ]; then
+            while IFS= read -r arg; do
+              [ -z "$arg" ] && continue
+              extra_args+=("$arg")
+            done <<< "$EXTRA_TEST_ARGS"
+          fi
+
+          tag_args=()
+          if [ -n "$TEST_TAGS" ]; then
+            tag_args+=("-tags" "$TEST_TAGS")
+          fi
+
           go test ./... \
             -v \
             -race \
             -count=1 \
             -coverprofile=coverage.out \
             -covermode=atomic \
-            -timeout="$TEST_TIMEOUT"
+            -timeout="$TEST_TIMEOUT" \
+            "${tag_args[@]+"${tag_args[@]}"}" \
+            "${extra_args[@]+"${extra_args[@]}"}"
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -1
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ inputs.coverage-artifact-name }}-${{ github.sha }}
           path: ${{ inputs.working-directory }}/coverage.out
           retention-days: 7
       - name: govulncheck
         if: ${{ inputs.run-govulncheck }}
-        uses: golang/govulncheck-action@v1
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1
         with:
           go-version-input: ${{ inputs.go-version }}
           check-latest: true

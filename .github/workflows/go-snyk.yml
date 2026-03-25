@@ -1,0 +1,64 @@
+name: Go Dependency Scan (Snyk)
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "Directory containing the Go module"
+        required: false
+        type: string
+        default: "."
+      node-version:
+        description: "Node.js version for Snyk CLI"
+        required: false
+        type: number
+        default: 22
+      upload-sarif:
+        description: "Upload SARIF to GitHub code scanning"
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      SNYK_TOKEN:
+        description: "Snyk API token"
+        required: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  snyk:
+    name: Snyk (Go)
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Install Snyk
+        run: npm install -g snyk
+
+      - name: Snyk OSS Test (Go)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          set -euo pipefail
+          snyk test --file=go.mod --sarif-file-output=snyk.sarif || true
+          test -s snyk.sarif
+
+      - name: Upload SARIF
+        if: inputs.upload-sarif
+        uses: github/codeql-action/upload-sarif@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v4
+        with:
+          sarif_file: ${{ inputs.working-directory }}/snyk.sarif
+          category: snyk-go
+

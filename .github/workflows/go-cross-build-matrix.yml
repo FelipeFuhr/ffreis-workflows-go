@@ -1,0 +1,64 @@
+name: Go Cross Build (Matrix)
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: "Go version"
+        type: string
+        default: "1.25"
+      working-directory:
+        description: "Directory containing the Go module"
+        type: string
+        default: "."
+      targets:
+        description: "Newline-separated build targets (packages) to build"
+        type: string
+        default: "./..."
+      goos:
+        description: "Comma-separated GOOS list"
+        type: string
+        default: "linux,darwin,windows"
+      goarch:
+        description: "Comma-separated GOARCH list"
+        type: string
+        default: "amd64,arm64"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Cross build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goos: ${{ fromJSON(format('["{0}"]', join(split(inputs.goos, ','), '","'))) }}
+        goarch: ${{ fromJSON(format('["{0}"]', join(split(inputs.goarch, ','), '","'))) }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+      - name: Cross-build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          TARGETS: ${{ inputs.targets }}
+          CGO_ENABLED: "0"
+        run: |
+          set -euo pipefail
+          while IFS= read -r t; do
+            [[ -z "$t" ]] && continue
+            echo "Building $t for $GOOS/$GOARCH"
+            go build "$t"
+          done <<< "$TARGETS"
+

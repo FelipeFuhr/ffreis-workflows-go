@@ -11,6 +11,11 @@ on:
         description: "Directory containing the Go module"
         type: string
         default: "."
+      test-tags:
+        description: 'Build tags passed to go test via -tags'
+        required: false
+        type: string
+        default: ''
       test-timeout:
         description: "Timeout passed to go test -timeout"
         type: string
@@ -44,9 +49,9 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: ${{ inputs.go-version }}
           cache: true
@@ -55,13 +60,19 @@ jobs:
       - name: Run tests with coverage
         env:
           TEST_TIMEOUT: ${{ inputs.test-timeout }}
+          TEST_TAGS: ${{ inputs.test-tags }}
         run: |
           set -euo pipefail
+          tag_args=()
+          if [ -n "$TEST_TAGS" ]; then
+            tag_args+=("-tags" "$TEST_TAGS")
+          fi
           go test ./... \
             -coverprofile=coverage.out \
             -covermode=atomic \
             -count=1 \
-            -timeout="$TEST_TIMEOUT"
+            -timeout="$TEST_TIMEOUT" \
+            "${tag_args[@]+"${tag_args[@]}"}"
 
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -1

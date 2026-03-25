@@ -1,39 +1,51 @@
-name: Go Format Check
+name: Go Mod Tidy Check
 
 on:
   workflow_call:
     inputs:
       go-version:
-        description: 'Go version (e.g. "1.22")'
+        description: "Go version to use"
         required: false
         type: string
-        default: '1.25'
+        default: "1.25"
       working-directory:
-        description: 'Directory to run gofmt in'
+        description: "Directory containing the Go module"
         required: false
         type: string
-        default: '.'
+        default: "."
+
+permissions:
+  contents: read
 
 jobs:
-  fmt:
-    name: Format (gofmt)
+  tidy:
+    name: go mod tidy (clean)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: ${{ inputs.go-version }}
           cache: true
           cache-dependency-path: ${{ inputs.working-directory }}/go.sum
-      - name: Check formatting
+
+      - name: go mod tidy is clean
         run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "::error title=Formatting required::The following files need gofmt:"
-            printf "%s\n" $unformatted
-            echo "Fix with: gofmt -w ."
-            exit 1
+          set -euo pipefail
+          go mod tidy
+          go mod verify
+
+          files=(go.mod)
+          if [ -f go.sum ]; then
+            files+=(go.sum)
           fi
+
+          git diff --exit-code -- "${files[@]}" || {
+            echo "::error::go.mod/go.sum not tidy"
+            exit 1
+          }
+
