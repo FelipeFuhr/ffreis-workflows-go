@@ -41,7 +41,7 @@ jobs:
   sonar:
     name: SonarCloud
     runs-on: ubuntu-latest
-    if: (vars.SONARCLOUD_ENABLED == 'true' || vars.SONAR_ENABLED == 'true') && (github.event_name != 'pull_request' || inputs.run-on-pr) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+    if: github.event_name != 'pull_request' || inputs.run-on-pr
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
@@ -76,15 +76,34 @@ jobs:
       - name: Build Sonar extra args
         id: sonar-args
         env:
-          PROJECT_KEY: ${{ inputs.sonar-project-key || vars.SONAR_PROJECT_KEY || format('{0}_{1}', github.repository_owner, github.event.repository.name) }}
-          ORGANIZATION: ${{ inputs.sonar-organization || vars.SONAR_ORGANIZATION || github.repository_owner }}
+          PROJECT_KEY_INPUT: ${{ inputs.sonar-project-key }}
+          PROJECT_KEY_VAR: ${{ vars.SONAR_PROJECT_KEY }}
+          ORGANIZATION_INPUT: ${{ inputs.sonar-organization }}
+          ORGANIZATION_VAR: ${{ vars.SONAR_ORGANIZATION }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
         run: |
           set -euo pipefail
+          PROJECT_KEY="${PROJECT_KEY_INPUT:-}"
+          if [[ -z "$PROJECT_KEY" ]]; then
+            PROJECT_KEY="${PROJECT_KEY_VAR:-}"
+          fi
           if [[ -z "$PROJECT_KEY" && -f sonar-project.properties ]]; then
             PROJECT_KEY="$(grep -E '^sonar\\.projectKey=' sonar-project.properties | head -n 1 | cut -d= -f2- || true)"
           fi
+          if [[ -z "$PROJECT_KEY" ]]; then
+            PROJECT_KEY="${OWNER}_${REPO}"
+          fi
+
+          ORGANIZATION="${ORGANIZATION_INPUT:-}"
+          if [[ -z "$ORGANIZATION" ]]; then
+            ORGANIZATION="${ORGANIZATION_VAR:-}"
+          fi
           if [[ -z "$ORGANIZATION" && -f sonar-project.properties ]]; then
             ORGANIZATION="$(grep -E '^sonar\\.organization=' sonar-project.properties | head -n 1 | cut -d= -f2- || true)"
+          fi
+          if [[ -z "$ORGANIZATION" ]]; then
+            ORGANIZATION="$OWNER"
           fi
 
           EXTRA=""
