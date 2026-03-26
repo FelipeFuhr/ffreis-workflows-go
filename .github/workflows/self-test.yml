@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   packages: write
   security-events: write
 
@@ -31,7 +32,14 @@ permissions:
 
 jobs:
   workflows-policy:
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@cd834ffd19f4cf2cef228d8f261db82768e88348
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@v0.1.7
+
+  codeql-actions:
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@v0.1.7
+    with:
+      languages: actions
+      source-root: .
+      upload-sarif: false
 
   fmt:
     uses: ./.github/workflows/go-fmt.yml
@@ -68,22 +76,22 @@ jobs:
       threshold: 50
 
   sonar:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/go-sonar.yml
     with:
       working-directory: examples/hello
+      run-on-pr: true
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   sonarqube:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/go-sonarqube.yml
     with:
       working-directory: examples/hello
       sonar-project-key: ffreis-workflows-go-self-test
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   security:
     uses: ./.github/workflows/go-security.yml
@@ -127,7 +135,7 @@ jobs:
       working-directory: examples/hello
 
   snyk:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/go-snyk.yml
     with:
       working-directory: examples/hello
@@ -136,7 +144,7 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   deepsource-coverage:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/go-deepsource-coverage.yml
     with:
       working-directory: examples/hello

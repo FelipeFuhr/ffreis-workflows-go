@@ -30,10 +30,11 @@ jobs:
           cache-dependency-path: ${{ inputs.working-directory }}/go.sum
       - name: Check formatting
         run: |
+          set -euo pipefail
           unformatted=$(gofmt -l .)
           if [ -n "$unformatted" ]; then
             echo "::error title=Formatting required::The following files need gofmt:"
-            printf "%s\n" $unformatted
+            printf "%s\n" "$unformatted"
             echo "Fix with: gofmt -w ."
             exit 1
           fi

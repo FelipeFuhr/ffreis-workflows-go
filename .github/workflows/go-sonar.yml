@@ -23,6 +23,11 @@ on:
         required: false
         type: string
         default: ''
+      run-on-pr:
+        description: 'If true, run SonarCloud on pull_request events (requires SonarCloud ALM binding)'
+        required: false
+        type: boolean
+        default: true
       coverage-artifact-name:
         description: 'Name of the coverage artifact uploaded by go-test.yml'
         required: false
@@ -36,16 +41,26 @@ jobs:
   sonar:
     name: SonarCloud
     runs-on: ubuntu-latest
-    if: vars.SONAR_ENABLED != 'false'
+    if: github.event_name != 'pull_request' || inputs.run-on-pr
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - name: Validate SonarCloud token
+        env:
+          SONAR_TOKEN_INPUT: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SONAR_TOKEN_INPUT" ]]; then
+            echo "::error::Missing required secret SONAR_TOKEN"
+            exit 1
+          fi
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: ${{ inputs.go-version }}
           cache: true
@@ -61,6 +76,7 @@ jobs:
       - name: Generate coverage (if no artifact)
         if: inputs.coverage-artifact-name == ''
         run: |
+          set -euo pipefail
           go test ./... \
             -coverprofile=coverage.out \
             -covermode=atomic \
@@ -70,10 +86,41 @@ jobs:
       - name: Build Sonar extra args
         id: sonar-args
         env:
-          PROJECT_KEY: ${{ inputs.sonar-project-key }}
-          ORGANIZATION: ${{ inputs.sonar-organization || vars.SONAR_ORGANIZATION }}
+          PROJECT_KEY_INPUT: ${{ inputs.sonar-project-key }}
+          PROJECT_KEY_VAR: ${{ vars.SONAR_PROJECT_KEY }}
+          ORGANIZATION_INPUT: ${{ inputs.sonar-organization }}
+          ORGANIZATION_VAR: ${{ vars.SONAR_ORGANIZATION }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
         run: |
           set -euo pipefail
+          PROJECT_KEY="${PROJECT_KEY_INPUT:-}"
+          if [[ -z "$PROJECT_KEY" ]]; then
+            PROJECT_KEY="${PROJECT_KEY_VAR:-}"
+          fi
+          if [[ -z "$PROJECT_KEY" && -f sonar-project.properties ]]; then
+            PROJECT_KEY="$(grep -E '^sonar\\.projectKey=' sonar-project.properties | head -n 1 | cut -d= -f2- || true)"
+          fi
+          if [[ -z "$PROJECT_KEY" ]]; then
+            PROJECT_KEY="${OWNER}_${REPO}"
+          fi
+
+          ORGANIZATION="${ORGANIZATION_INPUT:-}"
+          if [[ -z "$ORGANIZATION" ]]; then
+            ORGANIZATION="${ORGANIZATION_VAR:-}"
+          fi
+          if [[ -z "$ORGANIZATION" && -f sonar-project.properties ]]; then
+            ORGANIZATION="$(grep -E '^sonar\\.organization=' sonar-project.properties | head -n 1 | cut -d= -f2- || true)"
+          fi
+          if [[ -z "$ORGANIZATION" ]]; then
+            ORGANIZATION="$OWNER"
+          fi
+
+          # SonarCloud organization keys are typically lowercase slugs. To avoid
+          # failures when repo/org casing differs (e.g. GitHub owner "FelipeFuhr"
+          # vs Sonar org "felipefuhr"), normalize to lowercase.
+          ORGANIZATION="$(printf '%s' "$ORGANIZATION" | tr '[:upper:]' '[:lower:]')"
+
           EXTRA=""
           [ -n "$PROJECT_KEY" ] && EXTRA="$EXTRA -Dsonar.projectKey=$PROJECT_KEY"
           [ -n "$ORGANIZATION" ] && EXTRA="$EXTRA -Dsonar.organization=$ORGANIZATION"
