@@ -70,7 +70,10 @@ jobs:
       - name: Pre-build test binary cache
         env:
           PACKAGES: ${{ inputs.packages }}
-        run: go test -run='^$' $PACKAGES 2>/dev/null || true
+        run: |
+          set -euo pipefail
+          read -r -a packages_arr <<< "${PACKAGES:-}"
+          go test -run='^$' "${packages_arr[@]}" 2>/dev/null || true
 
       - name: Install gremlins
         env:
@@ -90,12 +93,13 @@ jobs:
           PACKAGES: ${{ inputs.packages }}
         run: |
           set -euo pipefail
+          read -r -a packages_arr <<< "${PACKAGES:-}"
 
           # gremlins exits 1 if efficacy < threshold, 0 otherwise
           # Capture output so we can extract the score for the job output
           output=$(gremlins unleash \
             --threshold-efficacy="$THRESHOLD" \
-            $PACKAGES 2>&1) || exit_code=$?
+            "${packages_arr[@]}" 2>&1) || exit_code=$?
 
           echo "$output"
 

@@ -69,7 +69,10 @@ jobs:
       - name: Build packages
         env:
           PACKAGES: ${{ inputs.packages }}
-        run: go build $PACKAGES
+        run: |
+          set -euo pipefail
+          read -r -a packages_arr <<< "${PACKAGES:-}"
+          go build "${packages_arr[@]}"
 
       # Run seed corpus for every Fuzz* target (always fast — no mutation)
       - name: Run seed corpus
@@ -78,14 +81,15 @@ jobs:
           FUZZ_TARGETS: ${{ inputs.fuzz-targets }}
         run: |
           set -euo pipefail
-          for pkg in $(go list $PACKAGES 2>/dev/null); do
-            targets=$(go test -list "${FUZZ_TARGETS}.*" "$pkg" 2>/dev/null \
-              | grep '^Fuzz' || true)
-            for target in $targets; do
+          read -r -a packages_arr <<< "${PACKAGES:-}"
+          while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] || continue
+            while IFS= read -r target; do
+              [[ -n "$target" ]] || continue
               echo "→ seed corpus: $pkg/$target"
               go test -run="^${target}$" "$pkg"
-            done
-          done
+            done < <(go test -list "${FUZZ_TARGETS}.*" "$pkg" 2>/dev/null | grep '^Fuzz' || true)
+          done < <(go list "${packages_arr[@]}" 2>/dev/null)
 
       # Run active fuzzing for fuzz-time per target
       - name: Fuzz each target
@@ -95,19 +99,20 @@ jobs:
           FUZZ_TIME: ${{ inputs.fuzz-time }}
         run: |
           set -euo pipefail
+          read -r -a packages_arr <<< "${PACKAGES:-}"
           failed=0
-          for pkg in $(go list $PACKAGES 2>/dev/null); do
-            targets=$(go test -list "${FUZZ_TARGETS}.*" "$pkg" 2>/dev/null \
-              | grep '^Fuzz' || true)
-            for target in $targets; do
+          while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] || continue
+            while IFS= read -r target; do
+              [[ -n "$target" ]] || continue
               echo "→ fuzzing: $pkg/$target for $FUZZ_TIME"
               go test \
                 -run='^$' \
                 -fuzz="^${target}$" \
                 -fuzztime="$FUZZ_TIME" \
                 "$pkg" || failed=1
-            done
-          done
+            done < <(go test -list "${FUZZ_TARGETS}.*" "$pkg" 2>/dev/null | grep '^Fuzz' || true)
+          done < <(go list "${packages_arr[@]}" 2>/dev/null)
           exit "$failed"
 
       # Upload any crashers found during the run

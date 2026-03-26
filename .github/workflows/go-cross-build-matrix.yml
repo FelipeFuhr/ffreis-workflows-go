@@ -34,8 +34,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        goos: ${{ fromJSON(format('["{0}"]', join(split(replace(inputs.goos, ' ', ''), ','), '","'))) }}
-        goarch: ${{ fromJSON(format('["{0}"]', join(split(replace(inputs.goarch, ' ', ''), ','), '","'))) }}
+        goos: ${{ fromJSON(format('["{0}"]', replace(replace(inputs.goos, ' ', ''), ',', '","'))) }}
+        goarch: ${{ fromJSON(format('["{0}"]', replace(replace(inputs.goarch, ' ', ''), ',', '","'))) }}
 
     defaults:
       run:
@@ -61,4 +61,3 @@ jobs:
             echo "Building $t for $GOOS/$GOARCH"
             go build "$t"
           done <<< "$TARGETS"
-

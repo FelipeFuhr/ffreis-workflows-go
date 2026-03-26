@@ -55,15 +55,18 @@ jobs:
           CONTAINERFILE: ${{ inputs.containerfile }}
           WORKING_DIR: ${{ inputs.working-directory }}
         run: |
+          set -euo pipefail
+          build_args_arr=()
           args=""
           while IFS= read -r arg; do
-            [ -n "$arg" ] && args="$args --build-arg $arg"
+            [[ -n "$arg" ]] || continue
+            build_args_arr+=(--build-arg "$arg")
           done <<< "$BUILD_ARGS_INPUT"
           docker build \
             --target test \
             --tag "$IMAGE:test-$SHA" \
             --file "$CONTAINERFILE" \
-            $args \
+            "${build_args_arr[@]}" \
             "$WORKING_DIR"
 
       - name: Build final image
@@ -74,15 +77,18 @@ jobs:
           CONTAINERFILE: ${{ inputs.containerfile }}
           WORKING_DIR: ${{ inputs.working-directory }}
         run: |
+          set -euo pipefail
+          build_args_arr=()
           args=""
           while IFS= read -r arg; do
-            [ -n "$arg" ] && args="$args --build-arg $arg"
+            [[ -n "$arg" ]] || continue
+            build_args_arr+=(--build-arg "$arg")
           done <<< "$BUILD_ARGS_INPUT"
           docker build \
             --target final \
             --tag "$IMAGE:$SHA" \
             --file "$CONTAINERFILE" \
-            $args \
+            "${build_args_arr[@]}" \
             "$WORKING_DIR"
 
       - name: Scan image for vulnerabilities
