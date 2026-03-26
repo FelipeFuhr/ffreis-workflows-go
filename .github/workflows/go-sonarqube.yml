@@ -18,11 +18,16 @@ on:
         required: false
         type: string
         default: ""
+      sonar-host-url:
+        description: "SonarQube server URL (include scheme, e.g. https://sonarqube.example.com). Prefer setting as repo var SONAR_HOST_URL."
+        required: false
+        type: string
+        default: ""
     secrets:
       SONAR_TOKEN:
         required: true
       SONAR_HOST_URL:
-        required: true
+        required: false
 
 permissions:
   contents: read
@@ -80,24 +85,35 @@ jobs:
           echo "args=$extra" >> "$GITHUB_OUTPUT"
 
       - name: Validate SonarQube host URL
+        id: host
         env:
-          SONAR_HOST_URL_INPUT: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL_SECRET: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL_INPUT: ${{ inputs.sonar-host-url }}
+          SONAR_HOST_URL_VAR: ${{ vars.SONAR_HOST_URL }}
         run: |
           set -euo pipefail
-          if [[ -z "$SONAR_HOST_URL_INPUT" ]]; then
-            echo "::error::Missing required secret SONAR_HOST_URL"
+          host_url="${SONAR_HOST_URL_SECRET:-}"
+          if [[ -z "$host_url" ]]; then
+            host_url="${SONAR_HOST_URL_INPUT:-}"
+          fi
+          if [[ -z "$host_url" ]]; then
+            host_url="${SONAR_HOST_URL_VAR:-}"
+          fi
+          if [[ -z "$host_url" ]]; then
+            echo "::error::Missing SonarQube host URL. Set repo var SONAR_HOST_URL or pass input sonar-host-url (or secret SONAR_HOST_URL)."
             exit 1
           fi
-          if [[ "$SONAR_HOST_URL_INPUT" != http://* && "$SONAR_HOST_URL_INPUT" != https://* ]]; then
-            echo "::error::SONAR_HOST_URL must include scheme (http:// or https://). Got: $SONAR_HOST_URL_INPUT"
+          if [[ "$host_url" != http://* && "$host_url" != https://* ]]; then
+            echo "::error::SonarQube host URL must include scheme (http:// or https://). Got: $host_url"
             exit 1
           fi
+          echo "url=$host_url" >> "$GITHUB_OUTPUT"
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: ${{ steps.host.outputs.url }}
         with:
           projectBaseDir: ${{ inputs.working-directory }}
           args: >
