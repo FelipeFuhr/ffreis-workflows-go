@@ -28,14 +28,63 @@ permissions:
   contents: read
 
 jobs:
+  matrix:
+    name: Build matrix
+    runs-on: ubuntu-latest
+    outputs:
+      goos: ${{ steps.set.outputs.goos }}
+      goarch: ${{ steps.set.outputs.goarch }}
+    steps:
+      - name: Parse GOOS/GOARCH lists
+        id: set
+        env:
+          GOOS_INPUT: ${{ inputs.goos }}
+          GOARCH_INPUT: ${{ inputs.goarch }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          
+          def parse_list(value: str, name: str) -> list[str]:
+              v = (value or "").strip()
+              if not v:
+                  raise SystemExit(f"{name} is empty")
+              if v.startswith("["):
+                  try:
+                      parsed = json.loads(v)
+                  except json.JSONDecodeError as e:
+                      raise SystemExit(f"{name} is not valid JSON: {e}") from e
+                  if not isinstance(parsed, list) or not all(isinstance(x, str) and x.strip() for x in parsed):
+                      raise SystemExit(f"{name} must be a JSON array of non-empty strings")
+                  return [x.strip() for x in parsed]
+              parts = [p.strip() for p in v.split(",")]
+              parts = [p for p in parts if p]
+              if not parts:
+                  raise SystemExit(f"{name} has no valid entries")
+              return parts
+          
+          goos = parse_list(os.environ.get("GOOS_INPUT", ""), "inputs.goos")
+          goarch = parse_list(os.environ.get("GOARCH_INPUT", ""), "inputs.goarch")
+          
+          out_path = os.environ.get("GITHUB_OUTPUT")
+          if not out_path:
+              raise SystemExit("GITHUB_OUTPUT is not set")
+          with open(out_path, "a", encoding="utf-8") as f:
+              f.write(f"goos={json.dumps(goos)}\n")
+              f.write(f"goarch={json.dumps(goarch)}\n")
+          PY
+
   build:
     name: Cross build
+    needs: [matrix]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        goos: ${{ fromJSON(format('["{0}"]', replace(replace(inputs.goos, ' ', ''), ',', '","'))) }}
-        goarch: ${{ fromJSON(format('["{0}"]', replace(replace(inputs.goarch, ' ', ''), ',', '","'))) }}
+        goos: ${{ fromJSON(needs.matrix.outputs.goos) }}
+        goarch: ${{ fromJSON(needs.matrix.outputs.goarch) }}
 
     defaults:
       run:

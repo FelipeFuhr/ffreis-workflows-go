@@ -57,7 +57,6 @@ jobs:
         run: |
           set -euo pipefail
           build_args_arr=()
-          args=""
           while IFS= read -r arg; do
             [[ -n "$arg" ]] || continue
             build_args_arr+=(--build-arg "$arg")
@@ -79,7 +78,6 @@ jobs:
         run: |
           set -euo pipefail
           build_args_arr=()
-          args=""
           while IFS= read -r arg; do
             [[ -n "$arg" ]] || continue
             build_args_arr+=(--build-arg "$arg")
