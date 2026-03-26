@@ -23,6 +23,11 @@ on:
         required: false
         type: string
         default: ''
+      run-on-pr:
+        description: 'If true, run SonarCloud on pull_request events (requires SonarCloud ALM binding)'
+        required: false
+        type: boolean
+        default: false
       coverage-artifact-name:
         description: 'Name of the coverage artifact uploaded by go-test.yml'
         required: false
@@ -36,16 +41,16 @@ jobs:
   sonar:
     name: SonarCloud
     runs-on: ubuntu-latest
-    if: vars.SONAR_ENABLED != 'false'
+    if: (vars.SONARCLOUD_ENABLED == 'true' || vars.SONAR_ENABLED == 'true') && (github.event_name != 'pull_request' || inputs.run-on-pr) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: ${{ inputs.go-version }}
           cache: true
@@ -61,6 +66,7 @@ jobs:
       - name: Generate coverage (if no artifact)
         if: inputs.coverage-artifact-name == ''
         run: |
+          set -euo pipefail
           go test ./... \
             -coverprofile=coverage.out \
             -covermode=atomic \
@@ -70,8 +76,8 @@ jobs:
       - name: Build Sonar extra args
         id: sonar-args
         env:
-          PROJECT_KEY: ${{ inputs.sonar-project-key }}
-          ORGANIZATION: ${{ inputs.sonar-organization || vars.SONAR_ORGANIZATION }}
+          PROJECT_KEY: ${{ inputs.sonar-project-key || vars.SONAR_PROJECT_KEY || format('{0}_{1}', github.repository_owner, github.event.repository.name) }}
+          ORGANIZATION: ${{ inputs.sonar-organization || vars.SONAR_ORGANIZATION || github.repository_owner }}
         run: |
           set -euo pipefail
           if [[ -z "$PROJECT_KEY" && -f sonar-project.properties ]]; then

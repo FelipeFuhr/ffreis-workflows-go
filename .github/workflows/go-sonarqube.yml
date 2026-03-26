@@ -31,7 +31,7 @@ jobs:
   sonar:
     name: SonarQube
     runs-on: ubuntu-latest
-    if: vars.SONAR_ENABLED != 'false' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+    if: (vars.SONARQUBE_ENABLED == 'true' || vars.SONAR_ENABLED == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
 
     defaults:
       run:
@@ -83,4 +83,3 @@ jobs:
             -Dsonar.exclusions=vendor/**,**/*_test.go
             -Dsonar.tests=.
             -Dsonar.test.inclusions=**/*_test.go
-
