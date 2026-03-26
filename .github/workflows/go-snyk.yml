@@ -41,7 +41,7 @@ jobs:
   snyk:
     name: Snyk (Go)
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
 
     defaults:
       run:
@@ -78,4 +78,3 @@ jobs:
         with:
           sarif_file: ${{ inputs.working-directory }}/snyk.sarif
           category: snyk-go
-

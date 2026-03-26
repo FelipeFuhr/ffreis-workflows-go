@@ -76,7 +76,7 @@ jobs:
       threshold: 50
 
   sonar:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/go-sonar.yml
     with:
       working-directory: examples/hello
@@ -85,7 +85,7 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   sonarqube:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/go-sonarqube.yml
     with:
       working-directory: examples/hello
@@ -136,7 +136,7 @@ jobs:
       working-directory: examples/hello
 
   snyk:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/go-snyk.yml
     with:
       working-directory: examples/hello
@@ -145,7 +145,7 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   deepsource-coverage:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/go-deepsource-coverage.yml
     with:
       working-directory: examples/hello

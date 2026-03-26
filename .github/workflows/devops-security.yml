@@ -24,7 +24,7 @@ jobs:
     with:
       working-directory: "."
       scan-history: true
-      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
   trivy-fs:
     permissions:
@@ -33,7 +33,7 @@ jobs:
     uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-trivy-fs.yml@v0.1.7
     with:
       scan-ref: "."
-      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
   grype-fs:
     permissions:
@@ -43,7 +43,7 @@ jobs:
     with:
       path: "."
       fail-on-vuln: ${{ github.event_name != 'pull_request' }}
-      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
   osv:
     permissions:
@@ -53,4 +53,4 @@ jobs:
     uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-osv-scanner.yml@v0.1.7
     with:
       working-directory: "."
-      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+      upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
