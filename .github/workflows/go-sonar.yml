@@ -27,7 +27,7 @@ on:
         description: 'If true, run SonarCloud on pull_request events (requires SonarCloud ALM binding)'
         required: false
         type: boolean
-        default: false
+        default: true
       coverage-artifact-name:
         description: 'Name of the coverage artifact uploaded by go-test.yml'
         required: false
@@ -46,6 +46,16 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
+      - name: Validate SonarCloud token
+        env:
+          SONAR_TOKEN_INPUT: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SONAR_TOKEN_INPUT" ]]; then
+            echo "::error::Missing required secret SONAR_TOKEN"
+            exit 1
+          fi
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0

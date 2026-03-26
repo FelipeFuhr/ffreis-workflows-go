@@ -48,6 +48,16 @@ jobs:
           cache: true
           cache-dependency-path: ${{ inputs.working-directory }}/go.sum
 
+      - name: Validate SonarQube token
+        env:
+          SONAR_TOKEN_INPUT: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SONAR_TOKEN_INPUT" ]]; then
+            echo "::error::Missing required secret SONAR_TOKEN"
+            exit 1
+          fi
+
       - name: Generate coverage
         run: |
           set -euo pipefail

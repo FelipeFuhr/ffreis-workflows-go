@@ -76,7 +76,7 @@ jobs:
       threshold: 50
 
   sonar:
-    if: secrets.SONAR_TOKEN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     uses: ./.github/workflows/go-sonar.yml
     with:
       working-directory: examples/hello
@@ -85,7 +85,7 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   sonarqube:
-    if: secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     uses: ./.github/workflows/go-sonarqube.yml
     with:
       working-directory: examples/hello
