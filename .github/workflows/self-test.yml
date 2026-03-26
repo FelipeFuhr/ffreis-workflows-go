@@ -19,10 +19,6 @@ permissions:
 # is skipped on fork pull requests (secrets are not available to forks), but
 # runs on all other events and fails if the token is absent.
 #
-# go-sonarqube requires SONAR_TOKEN and SONAR_HOST_URL to be configured in the
-# repository. The job is skipped on fork pull requests, but runs on all other
-# events and fails if either secret is absent.
-#
 # go-deepsource-coverage requires DEEPSOURCE_DSN to be configured in the repository.
 # The job is skipped on fork pull requests.
 #
@@ -81,15 +77,6 @@ jobs:
     with:
       working-directory: examples/hello
       run-on-pr: true
-    secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-  sonarqube:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/go-sonarqube.yml
-    with:
-      working-directory: examples/hello
-      sonar-project-key: ffreis-workflows-go-self-test
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
