@@ -22,9 +22,9 @@ permissions:
 # go-deepsource-coverage requires DEEPSOURCE_DSN to be configured in the repository.
 # The job is skipped on fork pull requests.
 #
-# go-snyk requires SNYK_TOKEN to be configured in the repository. The job is
-# skipped on fork pull requests, but runs on all other events and fails if the
-# token is absent.
+# go-snyk requires SNYK_TOKEN plus ENABLE_SNYK=true in repository or organization
+# variables. Without that variable the job is explicitly skipped. Fork pull
+# requests are also skipped.
 
 jobs:
   workflows-policy:
@@ -63,6 +63,7 @@ jobs:
       working-directory: examples/hello
       fuzz-targets: FuzzParseExpr
       fuzz-time: 10s
+      fuzz-parallelism: 1
 
   mutation:
     uses: ./.github/workflows/go-mutation.yml
@@ -122,7 +123,7 @@ jobs:
       working-directory: examples/hello
 
   snyk:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: vars.ENABLE_SNYK == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     uses: ./.github/workflows/go-snyk.yml
     with:
       working-directory: examples/hello
