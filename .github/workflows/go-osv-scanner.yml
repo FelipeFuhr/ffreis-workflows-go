@@ -1,0 +1,54 @@
+name: Go OSV Scanner
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "Directory containing the Go module"
+        required: false
+        type: string
+        default: "."
+      upload-sarif:
+        description: "Upload SARIF to GitHub code scanning"
+        required: false
+        type: boolean
+        default: true
+      fail-on-issues:
+        description: "Fail the workflow if vulnerabilities are found (default: false — results are uploaded as SARIF only)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+jobs:
+  osv-scan:
+    name: OSV Scanner (Go)
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Run OSV Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v2
+        continue-on-error: ${{ !inputs.fail-on-issues }}
+        with:
+          scan-args: |-
+            --format=sarif
+            --output=${{ inputs.working-directory }}/osv.sarif
+            --lockfile=${{ inputs.working-directory }}/go.mod
+
+      - name: Upload SARIF
+        if: inputs.upload-sarif
+        uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # v4
+        with:
+          sarif_file: ${{ inputs.working-directory }}/osv.sarif
+          category: osv-scanner-go
