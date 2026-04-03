@@ -19,57 +19,54 @@ permissions:
 # is skipped on fork pull requests (secrets are not available to forks), but
 # runs on all other events and fails if the token is absent.
 #
-# go-sonarqube requires SONAR_TOKEN and SONAR_HOST_URL to be configured in the
-# repository. The job is skipped on fork pull requests, but runs on all other
-# events and fails if either secret is absent.
-#
 # go-deepsource-coverage requires DEEPSOURCE_DSN to be configured in the repository.
 # The job is skipped on fork pull requests.
 #
-# go-snyk requires SNYK_TOKEN to be configured in the repository. The job is
-# skipped on fork pull requests, but runs on all other events and fails if the
-# token is absent.
+# go-snyk requires SNYK_TOKEN plus ENABLE_SNYK=true in repository or organization
+# variables. Without that variable the job is explicitly skipped. Fork pull
+# requests are also skipped.
 
 jobs:
   workflows-policy:
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@v0.1.7
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@main
 
   codeql-actions:
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@v0.1.7
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@main
     with:
       languages: actions
       source-root: .
       upload-sarif: false
 
   fmt:
-    uses: ./.github/workflows/go-fmt.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@main
     with:
       working-directory: examples/hello
 
   lint:
-    uses: ./.github/workflows/go-lint.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-lint.yml@main
     with:
       working-directory: examples/hello
 
   build:
-    uses: ./.github/workflows/go-build.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-build.yml@main
     with:
       working-directory: examples/hello
 
   test:
-    uses: ./.github/workflows/go-test.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@main
     with:
       working-directory: examples/hello
 
   fuzz:
-    uses: ./.github/workflows/go-fuzz.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fuzz.yml@main
     with:
       working-directory: examples/hello
       fuzz-targets: FuzzParseExpr
       fuzz-time: 10s
+      fuzz-parallelism: 1
 
   mutation:
-    uses: ./.github/workflows/go-mutation.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mutation.yml@main
     with:
       working-directory: examples/hello
       packages: ./calculator
@@ -77,52 +74,43 @@ jobs:
 
   sonar:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/go-sonar.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-sonar.yml@main
     with:
       working-directory: examples/hello
       run-on-pr: true
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  sonarqube:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/go-sonarqube.yml
-    with:
-      working-directory: examples/hello
-      sonar-project-key: ffreis-workflows-go-self-test
-    secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
   security:
-    uses: ./.github/workflows/go-security.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-security.yml@main
     with:
       working-directory: examples/hello
 
   coverage:
-    uses: ./.github/workflows/go-coverage.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-coverage.yml@main
     with:
       working-directory: examples/hello
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   docs:
-    uses: ./.github/workflows/go-docs.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-docs.yml@main
     with:
       working-directory: examples/hello
 
   semgrep:
-    uses: ./.github/workflows/go-semgrep.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-semgrep.yml@main
     with:
       working-directory: examples/hello
 
   semgrep-sarif:
-    uses: ./.github/workflows/go-semgrep-sarif.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-semgrep-sarif.yml@main
     with:
       working-directory: examples/hello
       upload-sarif: true
 
   container:
-    uses: ./.github/workflows/go-container.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-container.yml@main
     with:
       image: hello-example
       push: false
@@ -130,13 +118,13 @@ jobs:
       working-directory: examples/hello
 
   mod-tidy:
-    uses: ./.github/workflows/go-mod-tidy-check.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@main
     with:
       working-directory: examples/hello
 
   snyk:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/go-snyk.yml
+    if: vars.ENABLE_SNYK == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-snyk.yml@main
     with:
       working-directory: examples/hello
       upload-sarif: false
@@ -145,14 +133,14 @@ jobs:
 
   deepsource-coverage:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/go-deepsource-coverage.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-deepsource-coverage.yml@main
     with:
       working-directory: examples/hello
     secrets:
       DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
 
   cross-build-matrix:
-    uses: ./.github/workflows/go-cross-build-matrix.yml
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-cross-build-matrix.yml@main
     with:
       go-version: "1.25.8"
       working-directory: examples/hello
