@@ -35,7 +35,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Run OSV Scanner
         uses: google/osv-scanner-action/osv-scanner-action@v2
@@ -48,7 +48,7 @@ jobs:
 
       - name: Upload SARIF
         if: inputs.upload-sarif
-        uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # v4
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4
         with:
           sarif_file: ${{ inputs.working-directory }}/osv.sarif
           category: osv-scanner-go
