@@ -5,7 +5,7 @@ on:
     types: [opened, edited, synchronize, reopened]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: devops-pr-hygiene-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
