@@ -9,6 +9,8 @@ permissions:
   actions: read
   packages: write
   security-events: write
+  issues: write
+  pull-requests: write
 
 # Validates that every workflow defined in this library functions correctly
 # against the minimal example app in examples/hello/.
@@ -26,37 +28,37 @@ permissions:
 
 jobs:
   workflows-policy:
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@main
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@fc5fcac8c2cfe0ccd8d18b73383df445ec31e371 # main
 
   codeql-actions:
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@main
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@fc5fcac8c2cfe0ccd8d18b73383df445ec31e371 # main
     with:
       languages: actions
       source-root: .
       upload-sarif: false
 
   fmt:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
 
   lint:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-lint.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-lint.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
 
   build:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-build.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-build.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
 
   test:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
 
   fuzz:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fuzz.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fuzz.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
       fuzz-targets: FuzzParseExpr
@@ -64,7 +66,7 @@ jobs:
       fuzz-parallelism: 1
 
   mutation:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mutation.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mutation.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
       packages: ./calculator
@@ -72,7 +74,7 @@ jobs:
 
   sonar:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-sonar.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-sonar.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
       run-on-pr: true
@@ -80,35 +82,35 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   security:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-security.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-security.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
 
   coverage:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-coverage.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-coverage.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   docs:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-docs.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-docs.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
 
   semgrep:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-semgrep.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-semgrep.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
 
   semgrep-sarif:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-semgrep-sarif.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-semgrep-sarif.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
       upload-sarif: true
 
   container:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-container.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-container.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       image: hello-example
       push: false
@@ -116,13 +118,13 @@ jobs:
       working-directory: examples/hello
 
   mod-tidy:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
 
   snyk:
     if: vars.ENABLE_SNYK == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-snyk.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-snyk.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
       upload-sarif: false
@@ -131,14 +133,14 @@ jobs:
 
   deepsource-coverage:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-deepsource-coverage.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-deepsource-coverage.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       working-directory: examples/hello
     secrets:
       DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
 
   cross-build-matrix:
-    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-cross-build-matrix.yml@main
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-cross-build-matrix.yml@ad2009817adab843d41451ed91d90dc0c061a28d # main
     with:
       go-version: "1.25.8"
       working-directory: examples/hello
