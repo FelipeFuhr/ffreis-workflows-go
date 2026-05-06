@@ -28,9 +28,14 @@ on:
         required: false
         type: boolean
         default: false
+      allow-missing-token:
+        description: "When true, skip the scan silently if SNYK_TOKEN is absent (default: false — callers must explicitly opt in to skip behavior)"
+        required: false
+        type: boolean
+        default: false
     secrets:
       SNYK_TOKEN:
-        description: "Snyk API token (optional; when absent the scan is skipped and an empty SARIF is uploaded)"
+        description: "Snyk API token"
         required: false
 
 permissions:
@@ -69,9 +74,14 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
           FAIL_ON_ISSUES: ${{ inputs.fail-on-issues }}
+          ALLOW_MISSING_TOKEN: ${{ inputs.allow-missing-token }}
         run: |
           set -euo pipefail
           if [ -z "${SNYK_TOKEN:-}" ]; then
+            if [ "${ALLOW_MISSING_TOKEN}" != "true" ]; then
+              echo "SNYK_TOKEN is not set. Either provide the SNYK_TOKEN secret or set allow-missing-token to true to skip the scan."
+              exit 1
+            fi
             echo '{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"Snyk","rules":[]}},"results":[]}]}' > snyk.sarif
             echo "SNYK_TOKEN not set; skipping scan"
             exit 0

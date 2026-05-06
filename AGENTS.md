@@ -1,121 +1,57 @@
-# ffreis-workflows-go — contribution guide
+# Agent Context
 
-This repository is a library of reusable GitHub Actions workflows for Go projects.
-The `examples/hello/` directory is the canonical test subject used by `self-test.yml`.
+**This repo:** `ffreis-workflows-go` — reusable GitHub Actions workflow library for Go
+projects. Covers fmt, lint, test, matrix build, coverage, SBOM, container build,
+fuzzing, mutation testing, and OSV scanning.
 
----
+## Non-obvious rules (read before changing anything)
 
-## Rules for adding or modifying workflows
+1. **ALL `go-*.yml` workflows must appear in `ci.yml`.** No exceptions —
+   unlike container/python repos, there is no live-infra exemption here.
 
-### 1. Every new workflow must be in `self-test.yml`
+2. **Shell injection prevention is enforced by Semgrep** (`run-shell-injection` rule).
+   Some action SHAs trigger false-positive secret detection — suppress with
+   `# nosemgrep: <rule-id>` inline comment, not by disabling the rule.
 
-Every file added to `.github/workflows/` (except `self-test.yml` itself) **must** have a
-corresponding job in `self-test.yml` that calls it against `examples/hello/`.
+3. **Third-party action SHAs are managed by Renovate.** Do not edit manually.
 
-A workflow that is not exercised by `self-test.yml` is unverified. It will not be merged.
+4. **Fork PR gating for secrets** (e.g., Codecov token):
+   ```yaml
+   if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+   ```
 
-**There are no exceptions in this repo.** All workflows here operate on source code and
-do not require live external infrastructure.
+5. **Concurrency is caller-controlled.** Never add `concurrency:` to reusable workflows.
 
-**Handling required secrets** — if a workflow requires a secret (e.g. `SONAR_TOKEN`,
-`CODECOV_TOKEN`), declare it as `required: true` in the workflow. In `self-test.yml`, gate
-the entire job so it is explicitly skipped on fork PRs (where secrets are unavailable):
+6. **`examples/hello/` tests both Go and container workflows** — it has Go source, a
+   Containerfile, and CI config. Don't simplify or split it.
 
-```yaml
-sonar:
-  if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
-  uses: ./.github/workflows/go-sonar.yml
-  with:
-    working-directory: examples/hello
-  secrets:
-    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+## Structure
+
+```
+.github/workflows/
+  go-*.yml        ← reusable library
+  devops-*.yml    ← repo-maintenance (exempt from self-test)
+  ci.yml          ← self-test orchestrator
+examples/hello/   ← Go project + Containerfile + .golangci.yml
+Makefile          ← setup, fmt, fmt-check, lint, test, hooks
 ```
 
-This produces an explicit "Skipped" status on fork PRs rather than a silent success.
+## Build/test
 
----
-
-### 2. No silent failures
-
-A step that fails silently is worse than one that fails loudly.
-
-- If a required tool is missing → `exit 1` with a clear install message pointing to docs.
-- If a required secret is absent and the workflow cannot meaningfully skip → fail the job.
-- Never print a warning and continue when the operation did not run.
-
-`make secrets-scan-staged` and `make setup` in the `Makefile` are the reference
-implementation of the correct error pattern.
-
----
-
-### 3. No shell injection — inputs go through `env:`
-
-Never interpolate `${{ inputs.* }}`, `${{ github.* }}`, or any expression directly inside a
-`run:` step. Always route through an `env:` variable. Semgrep runs in CI and will block PRs
-that violate this rule (`run-shell-injection`).
-
-```yaml
-# BAD — Semgrep blocks this
-run: go test -run "${{ inputs.test-filter }}" ./...
-
-# GOOD
-env:
-  TEST_FILTER: ${{ inputs.test-filter }}
-run: go test -run "$TEST_FILTER" ./...
+```bash
+make setup              # lefthook + gitleaks check
+make fmt                # gofmt examples/hello
+make lint               # actionlint + golangci-lint (soft-fail if not installed)
+make test               # go test ./... in examples/hello
 ```
 
----
+## Cross-repo role
 
-### 4. Least-privilege secrets — never `secrets: inherit`
+Consumed by Go repos in the fleet. Callers must pass `working-directory` when their
+Go code is not at the repo root.
 
-Pass only the secrets a workflow explicitly declares, both in `self-test.yml` and in any
-downstream consumer:
+## Keeping this file current
 
-```yaml
-# BAD
-uses: ./.github/workflows/go-sonar.yml
-secrets: inherit
-
-# GOOD
-uses: ./.github/workflows/go-sonar.yml
-secrets:
-  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-```
-
----
-
-### 5. `secrets.*` is forbidden in `if:` conditions
-
-GitHub Actions forbids `secrets.*` in `if:` expressions within `workflow_call` reusable
-workflows. Use job-level `if:` gating in `self-test.yml` instead (see the pattern in rule 1).
-
----
-
-### 6. Pin third-party actions to a full commit SHA
-
-```yaml
-# BAD
-uses: actions/checkout@v4
-
-# GOOD
-uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-```
-
-When Semgrep flags a SHA as a false-positive secret, suppress it inline:
-
-```yaml
-uses: SonarSource/sonarqube-scan-action@<sha> # nosemgrep: generic.secrets.security.detected-sonarqube-docs-api-key.detected-sonarqube-docs-api-key
-```
-
----
-
-## Makefile targets
-
-| Target | Purpose |
-|---|---|
-| `make setup` | Bootstrap lefthook + verify all required dev tools are installed |
-| `make lint` | Validate workflow YAML + golangci-lint on `examples/hello` |
-| `make fmt-check` | Check Go formatting |
-| `make test` | Run tests in `examples/hello` |
-| `make secrets-scan-staged` | Scan staged files with gitleaks (fails if gitleaks not installed) |
-| `make hooks` | Install git hooks via lefthook |
+- **If you discover a fact not reflected here:** add it before finishing your task.
+- **If something here is wrong or outdated:** correct it in the same commit as the code change.
+- **If you rename a file, command, or concept referenced here:** update the reference.
