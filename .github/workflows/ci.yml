@@ -33,9 +33,11 @@ concurrency:
 
 jobs:
   workflows-policy:
+    timeout-minutes: 15
     uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@01e2b12e992621fecf074b8a202f66044196f3bf # v1.0.4
 
   codeql-actions:
+    timeout-minutes: 30
     uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@01e2b12e992621fecf074b8a202f66044196f3bf # v1.0.4
     with:
       languages: actions
@@ -43,26 +45,33 @@ jobs:
       upload-sarif: false
 
   fmt:
+    timeout-minutes: 15
     uses: ./.github/workflows/go-fmt.yml
     with:
       working-directory: examples/hello
 
   lint:
+    timeout-minutes: 15
     uses: ./.github/workflows/go-lint.yml
     with:
       working-directory: examples/hello
 
   build:
+    timeout-minutes: 30
     uses: ./.github/workflows/go-build.yml
     with:
       working-directory: examples/hello
 
   test:
+    timeout-minutes: 30
+    if: ${{ !github.event.pull_request.draft }}
     uses: ./.github/workflows/go-test.yml
     with:
       working-directory: examples/hello
 
   fuzz:
+    timeout-minutes: 30
+    if: ${{ !github.event.pull_request.draft }}
     uses: ./.github/workflows/go-fuzz.yml
     with:
       working-directory: examples/hello
@@ -71,6 +80,8 @@ jobs:
       fuzz-parallelism: 1
 
   mutation:
+    timeout-minutes: 30
+    if: ${{ !github.event.pull_request.draft }}
     uses: ./.github/workflows/go-mutation.yml
     with:
       working-directory: examples/hello
@@ -78,6 +89,7 @@ jobs:
       threshold: 50
 
   sonar:
+    timeout-minutes: 30
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/go-sonar.yml
     with:
@@ -87,11 +99,14 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   security:
+    timeout-minutes: 30
     uses: ./.github/workflows/go-security.yml
     with:
       working-directory: examples/hello
 
   coverage:
+    timeout-minutes: 30
+    if: ${{ !github.event.pull_request.draft }}
     uses: ./.github/workflows/go-coverage.yml
     with:
       working-directory: examples/hello
@@ -99,22 +114,26 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   docs:
+    timeout-minutes: 15
     uses: ./.github/workflows/go-docs.yml
     with:
       working-directory: examples/hello
 
   semgrep:
+    timeout-minutes: 30
     uses: ./.github/workflows/go-semgrep.yml
     with:
       working-directory: examples/hello
 
   semgrep-sarif:
+    timeout-minutes: 30
     uses: ./.github/workflows/go-semgrep-sarif.yml
     with:
       working-directory: examples/hello
       upload-sarif: true
 
   container:
+    timeout-minutes: 30
     uses: ./.github/workflows/go-container.yml
     with:
       image: hello-example
@@ -123,11 +142,13 @@ jobs:
       working-directory: examples/hello
 
   mod-tidy:
+    timeout-minutes: 15
     uses: ./.github/workflows/go-mod-tidy-check.yml
     with:
       working-directory: examples/hello
 
   snyk:
+    timeout-minutes: 30
     if: vars.ENABLE_SNYK == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     uses: ./.github/workflows/go-snyk.yml
     with:
@@ -137,6 +158,7 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   deepsource-coverage:
+    timeout-minutes: 30
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/go-deepsource-coverage.yml
     with:
@@ -145,6 +167,7 @@ jobs:
       DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
 
   cross-build-matrix:
+    timeout-minutes: 30
     uses: ./.github/workflows/go-cross-build-matrix.yml
     with:
       go-version: "1.25.8"

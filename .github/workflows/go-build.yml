@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   build:
+    timeout-minutes: 30
     name: Build (go vet + go build)
     runs-on: ubuntu-latest
     defaults:

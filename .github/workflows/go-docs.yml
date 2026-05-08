@@ -21,6 +21,7 @@ permissions:
 
 jobs:
   docs:
+    timeout-minutes: 15
     name: godoc check
     runs-on: ubuntu-latest
 
