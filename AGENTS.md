@@ -50,6 +50,14 @@ make test               # go test ./... in examples/hello
 Consumed by Go repos in the fleet. Callers must pass `working-directory` when their
 Go code is not at the repo root.
 
+## Public repo — private-repo hygiene
+
+This is a **public** GitHub repository. When writing commit messages, PR titles,
+PR descriptions, or any other user-visible text, **never name private repos** —
+website content, inventory, infra, Lambda, or data repos that are not publicly
+listed. Use generic terms instead: "the fleet inventory", "a private consumer",
+"internal infra", "private data repo", etc.
+
 ## Keeping this file current
 
 - **If you discover a fact not reflected here:** add it before finishing your task.

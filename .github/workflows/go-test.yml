@@ -45,6 +45,7 @@ on:
 
 jobs:
   test:
+    timeout-minutes: 30
     name: Test (race + coverage)
     runs-on: ubuntu-latest
     outputs:

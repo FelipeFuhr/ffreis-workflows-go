@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   tidy:
+    timeout-minutes: 15
     name: go mod tidy (clean)
     runs-on: ubuntu-latest
     defaults:

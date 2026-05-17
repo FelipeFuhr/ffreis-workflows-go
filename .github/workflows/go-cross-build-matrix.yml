@@ -29,6 +29,7 @@ permissions:
 
 jobs:
   matrix:
+    timeout-minutes: 30
     name: Build matrix
     runs-on: ubuntu-latest
     outputs:
@@ -82,6 +83,7 @@ jobs:
           PY
 
   build:
+    timeout-minutes: 30
     name: Cross build
     needs: [matrix]
     runs-on: ubuntu-latest

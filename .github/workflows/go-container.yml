@@ -42,6 +42,7 @@ permissions:
 
 jobs:
   container:
+    timeout-minutes: 30
     name: Container (build + scan + push)
     runs-on: ubuntu-latest
     permissions:

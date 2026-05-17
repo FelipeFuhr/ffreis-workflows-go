@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   fmt:
+    timeout-minutes: 15
     name: Format (gofmt)
     runs-on: ubuntu-latest
     defaults:

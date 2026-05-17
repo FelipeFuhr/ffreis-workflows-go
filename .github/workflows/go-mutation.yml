@@ -48,6 +48,7 @@ permissions:
 
 jobs:
   mutation:
+    timeout-minutes: 30
     name: Mutation score (gremlins)
     runs-on: ubuntu-latest
     outputs:
