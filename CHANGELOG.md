@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.0.0...v1.1.0) (2026-05-23)
+
+
+### Features
+
+* migrate to platform standards ([#37](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/37)) ([a543ef8](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/a543ef895b5c2d6e4e7fe87245d440889c485b7c))
+
 ## 1.0.0 (2026-05-06)
 
 
