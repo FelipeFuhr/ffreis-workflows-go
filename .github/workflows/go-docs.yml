@@ -16,12 +16,11 @@ on:
         type: boolean
         default: true
 
-permissions:
-  contents: read
-
 jobs:
   docs:
     timeout-minutes: 15
+    permissions:
+      contents: read
     name: godoc check
     runs-on: ubuntu-latest
 

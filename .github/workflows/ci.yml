@@ -4,12 +4,6 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: read
-  actions: read
-  packages: write
-  security-events: write
-
 # Validates that every workflow defined in this library functions correctly
 # against the minimal example app in examples/hello/.
 #
@@ -33,9 +27,15 @@ concurrency:
 
 jobs:
   workflows-policy:
+    permissions:
+      contents: read
     uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@01e2b12e992621fecf074b8a202f66044196f3bf # v1.0.4
 
   codeql-actions:
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
     uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@01e2b12e992621fecf074b8a202f66044196f3bf # v1.0.4
     with:
       languages: actions
@@ -43,28 +43,39 @@ jobs:
       upload-sarif: false
 
   fmt:
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-fmt.yml
     with:
       working-directory: examples/hello
 
   lint:
+    permissions:
+      contents: read
+      pull-requests: read
     uses: ./.github/workflows/go-lint.yml
     with:
       working-directory: examples/hello
 
   build:
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-build.yml
     with:
       working-directory: examples/hello
 
   test:
     if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-test.yml
     with:
       working-directory: examples/hello
 
   fuzz:
     if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-fuzz.yml
     with:
       working-directory: examples/hello
@@ -74,6 +85,8 @@ jobs:
 
   mutation:
     if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-mutation.yml
     with:
       working-directory: examples/hello
@@ -82,6 +95,8 @@ jobs:
 
   sonar:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-sonar.yml
     with:
       working-directory: examples/hello
@@ -90,12 +105,16 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   security:
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-security.yml
     with:
       working-directory: examples/hello
 
   coverage:
     if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-coverage.yml
     with:
       working-directory: examples/hello
@@ -103,22 +122,33 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   docs:
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-docs.yml
     with:
       working-directory: examples/hello
 
   semgrep:
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-semgrep.yml
     with:
       working-directory: examples/hello
 
   semgrep-sarif:
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
     uses: ./.github/workflows/go-semgrep-sarif.yml
     with:
       working-directory: examples/hello
       upload-sarif: true
 
   container:
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/go-container.yml
     with:
       image: hello-example
@@ -127,12 +157,18 @@ jobs:
       working-directory: examples/hello
 
   mod-tidy:
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-mod-tidy-check.yml
     with:
       working-directory: examples/hello
 
   snyk:
     if: vars.ENABLE_SNYK == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
     uses: ./.github/workflows/go-snyk.yml
     with:
       working-directory: examples/hello
@@ -142,6 +178,8 @@ jobs:
 
   deepsource-coverage:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-deepsource-coverage.yml
     with:
       working-directory: examples/hello
@@ -149,6 +187,8 @@ jobs:
       DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
 
   cross-build-matrix:
+    permissions:
+      contents: read
     uses: ./.github/workflows/go-cross-build-matrix.yml
     with:
       go-version: "1.25.8"

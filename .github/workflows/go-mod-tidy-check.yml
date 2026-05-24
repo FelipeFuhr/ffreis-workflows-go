@@ -14,12 +14,11 @@ on:
         type: string
         default: "."
 
-permissions:
-  contents: read
-
 jobs:
   tidy:
     timeout-minutes: 15
+    permissions:
+      contents: read
     name: go mod tidy (clean)
     runs-on: ubuntu-latest
     defaults:

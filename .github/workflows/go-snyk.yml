@@ -38,14 +38,13 @@ on:
         description: "Snyk API token"
         required: false
 
-permissions:
-  contents: read
-  actions: read
-  security-events: write
-
 jobs:
   snyk:
     timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
     name: Snyk (Go)
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository

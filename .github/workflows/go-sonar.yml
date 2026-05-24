@@ -40,6 +40,8 @@ on:
 jobs:
   sonar:
     timeout-minutes: 30
+    permissions:
+      contents: read
     name: SonarCloud
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || inputs.run-on-pr

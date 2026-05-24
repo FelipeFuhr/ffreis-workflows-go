@@ -43,12 +43,11 @@ on:
         description: 'Achieved mutation efficacy score (integer, 0–100)'
         value: ${{ jobs.mutation.outputs.score }}
 
-permissions:
-  contents: read
-
 jobs:
   mutation:
     timeout-minutes: 30
+    permissions:
+      contents: read
     name: Mutation score (gremlins)
     runs-on: ubuntu-latest
     outputs:

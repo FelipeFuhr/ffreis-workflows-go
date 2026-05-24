@@ -52,12 +52,12 @@ on:
         required: false
         type: string
         default: 'Fuzz'
-permissions:
-  contents: read
 
 jobs:
   fuzz:
     timeout-minutes: 30
+    permissions:
+      contents: read
     name: Fuzz targets (${{ inputs.fuzz-time }} per target)
     runs-on: ubuntu-latest
     defaults:

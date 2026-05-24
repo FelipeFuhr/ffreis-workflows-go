@@ -19,14 +19,13 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: read
-  actions: read
-  security-events: write
-
 jobs:
   osv-scan:
     timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
     name: OSV Scanner (Go)
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository

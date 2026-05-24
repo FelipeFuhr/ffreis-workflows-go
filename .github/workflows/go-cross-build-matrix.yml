@@ -24,12 +24,11 @@ on:
         type: string
         default: "amd64,arm64"
 
-permissions:
-  contents: read
-
 jobs:
   matrix:
     timeout-minutes: 30
+    permissions:
+      contents: read
     name: Build matrix
     runs-on: ubuntu-latest
     outputs:
@@ -84,6 +83,8 @@ jobs:
 
   build:
     timeout-minutes: 30
+    permissions:
+      contents: read
     name: Cross build
     needs: [matrix]
     runs-on: ubuntu-latest
