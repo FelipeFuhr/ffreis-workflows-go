@@ -37,6 +37,11 @@ on:
         description: 'Token for pushing to the container registry (GITHUB_TOKEN is fine for GHCR)'
         required: false
 
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   container:
     timeout-minutes: 30
