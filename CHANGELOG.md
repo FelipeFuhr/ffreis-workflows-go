@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.1.2...v1.2.0) (2026-08-01)
+
+
+### Features
+
+* **go-test:** two-tier S3 (L2) build cache — engaged only on a GH-cache (L1) miss ([#68](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/68)) ([a7d3f9e](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/a7d3f9e70ca8715152fc76d2c6acdd6e6fd31b7e))
+* **go:** add optional GOPRIVATE + private-module auth support ([#90](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/90)) ([600e3b4](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/600e3b4802678747a7984ef575a46a1b19f531ff))
+* **security:** add optional GOPRIVATE + private-module auth support ([#95](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/95)) ([d520667](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/d52066753ec83739bcf7a37a6274fb9bdf717710))
+* **semgrep:** replace Docker-container semgrep-action with native CLI ([#89](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/89)) ([db4a095](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/db4a0956ceefaa7dbe59021f238340b9be694bb2))
+
+
+### Bug Fixes
+
+* **ci:** pin ffreis-workflows-general to v1.7.0 ([#80](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/80)) ([237b32f](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/237b32f397db402089d8e48f4983a23eca682671))
+* **go-sonar:** correct corrupted runner input default ([#87](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/87)) ([ba85750](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/ba8575070827b3f4c74a7568d425c7d3e12d50a6))
+* **shellcheck:** add SC2317 reason to common_die disable comment ([#79](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/79)) ([c82cd30](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/c82cd30ec1ed19b9219b73458257575a578f10f4))
+
 ## [1.1.2](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.1.1...v1.1.2) (2026-06-08)
 
 
