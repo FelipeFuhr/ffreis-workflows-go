@@ -22,6 +22,18 @@ on:
         required: false
         type: boolean
         default: false
+      goprivate:
+        description: >
+          Comma-separated GOPRIVATE glob pattern(s) for private cross-repo Go
+          dependencies (e.g. 'github.com/FelipeFuhr/*'). Empty (default) leaves
+          GOPRIVATE/git auth untouched — zero-impact for existing callers.
+        required: false
+        type: string
+        default: ""
+    secrets:
+      GIT_AUTH_TOKEN:
+        description: "Token for private cross-repo Go module access (used with goprivate)"
+        required: false
 
 jobs:
   govulncheck:
@@ -41,6 +53,21 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+
+      - name: Configure private Go module access
+        if: ${{ inputs.goprivate != '' }}
+        env:
+          GOPRIVATE_INPUT: ${{ inputs.goprivate }}
+          GIT_AUTH_TOKEN: ${{ secrets.GIT_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          {
+            echo "GOPRIVATE=${GOPRIVATE_INPUT}"
+            echo "GONOSUMCHECK=1"
+          } >> "$GITHUB_ENV"
+          if [ -n "$GIT_AUTH_TOKEN" ]; then
+            git config --global url."https://x-access-token:${GIT_AUTH_TOKEN}@github.com/".insteadOf "https://github.com/"
+          fi
 
       - name: Run govulncheck
         uses: golang/govulncheck-action@31f7c5463448f83528bd771c2d978d940080c9fd # v1
