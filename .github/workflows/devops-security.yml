@@ -42,7 +42,7 @@ jobs:
       contents: read
       actions: read
       security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-gitleaks.yml@287f836a726a35af37bd24561fc687f66eaeb92f # v1.7.0 # v1.4.3
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-gitleaks.yml@725560858c46d4b6f1f8ec5b7baba8695d05454a # v1.9.2
     with:
       working-directory: "."
       scan-history: true
@@ -59,7 +59,7 @@ jobs:
       contents: read
       actions: read
       security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-trivy-fs.yml@287f836a726a35af37bd24561fc687f66eaeb92f # v1.7.0 # v1.4.3
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-trivy-fs.yml@725560858c46d4b6f1f8ec5b7baba8695d05454a # v1.9.2
     with:
       scan-ref: "."
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
@@ -76,7 +76,7 @@ jobs:
       contents: read
       actions: read
       security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-grype-fs.yml@287f836a726a35af37bd24561fc687f66eaeb92f # v1.7.0 # v1.4.3
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-grype-fs.yml@725560858c46d4b6f1f8ec5b7baba8695d05454a # v1.9.2
     with:
       path: "."
       fail-on-vuln: ${{ github.event_name != 'pull_request' }}
@@ -93,7 +93,7 @@ jobs:
       contents: read
       actions: read
       security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-osv-scanner.yml@287f836a726a35af37bd24561fc687f66eaeb92f # v1.7.0 # v1.4.3
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-osv-scanner.yml@725560858c46d4b6f1f8ec5b7baba8695d05454a # v1.9.2
     with:
       working-directory: "."
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
