@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.2.0...v1.3.0) (2026-08-07)
+
+
+### Features
+
+* add go-integration-coverage.yml reusable workflow ([#99](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/99)) ([356d926](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/356d9269b1d7db5b9c932681d7319e901826f742))
+* **security:** add optional GOPRIVATE + private-module auth support ([#95](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/95)) ([d520667](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/d52066753ec83739bcf7a37a6274fb9bdf717710))
+
 ## [1.2.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.1.2...v1.2.0) (2026-08-01)
 
 
