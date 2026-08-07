@@ -20,15 +20,15 @@ uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-build.yml@<sha> # vX.Y
 | `go-lint.yml` | golangci-lint | `go-version`, `working-directory`, `config-path` |
 | `go-test.yml` | `go test -race -shuffle=on` + artifact upload | `go-version`, `working-directory`, `test-args` |
 | `go-build.yml` | `go build ./...` | `go-version`, `working-directory`, `build-args` |
-| `go-coverage.yml` | Coverage report + Codecov upload | `go-version`, `working-directory`; secret `CODECOV_TOKEN` |
-| `go-integration-coverage.yml` | Integration-tagged coverage report + Codecov upload (separate metric from unit coverage; opt-in gate via `coverage-threshold`) | `go-version`, `working-directory`, `build-tag`, `coverage-threshold`; secret `CODECOV_TOKEN` |
+| `go-coverage.yml` | Coverage report + Codecov upload | `go-version`, `working-directory`, `goprivate`; secrets `CODECOV_TOKEN`, `GIT_AUTH_TOKEN` |
+| `go-integration-coverage.yml` | Integration-tagged coverage report + Codecov upload (separate metric from unit coverage; opt-in gate via `coverage-threshold`) | `go-version`, `working-directory`, `build-tag`, `coverage-threshold`, `goprivate`; secrets `CODECOV_TOKEN`, `GIT_AUTH_TOKEN` |
 | `go-security.yml` | `govulncheck` CVE scan | `go-version`, `working-directory` |
 | `go-semgrep.yml` | Semgrep SAST (no upload) | `working-directory` |
 | `go-semgrep-sarif.yml` | Semgrep SAST with SARIF upload | `working-directory`, `upload-sarif` |
 | `go-sonar.yml` | SonarCloud scan + coverage | `go-version`, `working-directory`; secret `SONAR_TOKEN` |
 | `go-docs.yml` | `go doc` / pkgsite validation | `go-version`, `working-directory` |
 | `go-fuzz.yml` | `go test -fuzz` corpus run | `go-version`, `working-directory`, `fuzz-targets`, `fuzz-time` |
-| `go-mutation.yml` | go-mutants mutation testing | `go-version`, `working-directory`, `packages`, `threshold` |
+| `go-mutation.yml` | go-mutants mutation testing | `go-version`, `working-directory`, `packages`, `threshold`, `goprivate`; secret `GIT_AUTH_TOKEN` |
 | `go-mod-tidy-check.yml` | `go mod tidy` idempotency check | `go-version`, `working-directory` |
 | `go-osv-scanner.yml` | OSV vulnerability scanner | `working-directory` |
 | `go-snyk.yml` | Snyk dependency scan | `working-directory`; secret `SNYK_TOKEN` |
