@@ -1,0 +1,150 @@
+name: Go Integration Coverage (Codecov)
+
+# Parallel modality to go-coverage.yml: gates line coverage of tests built
+# with a dedicated build tag (fleet convention: //go:build integration),
+# tracked and enforced as a separate metric from unit coverage.
+#
+# Fleet convention (see platform-bootstrap's internal/bootstrap package):
+# integration-tagged test files coexist in the same package as untagged unit
+# test files, so `go test -tags=<build-tag> ./...` naturally runs BOTH sets
+# together (untagged files are always included; tagged files are added on
+# top). That means a repo with zero files carrying the build tag would still
+# "pass" a naive run of this workflow — it would just silently re-report unit
+# coverage under a different name, which is a false signal, not an empty one.
+# The "Detect integration-tagged test files" step below guards against this:
+# it greps for the build-tag comment itself and skips the test run + gate
+# entirely when no file declares it, rather than let a repo that hasn't
+# adopted integration testing yet spuriously pass (or fail) the gate.
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: |
+          JSON-encoded runner label(s). Default: GitHub-hosted ubuntu-latest.
+        required: false
+        type: string
+        default: '["ubuntu-latest"]'
+      go-version:
+        description: "Go version to use"
+        type: string
+        default: "1.25"
+      working-directory:
+        description: "Directory containing the Go module"
+        type: string
+        default: "."
+      build-tag:
+        description: 'Go build tag that marks integration tests (e.g. "//go:build integration")'
+        required: false
+        type: string
+        default: "integration"
+      test-timeout:
+        description: "Timeout passed to go test -timeout"
+        type: string
+        default: "120s"
+      coverage-threshold:
+        description: "Minimum integration line coverage percentage (0 = no gate)"
+        type: number
+        default: 0
+      codecov-flags:
+        description: "Codecov flags"
+        type: string
+        default: "integration"
+      codecov-name:
+        description: "Codecov report name"
+        type: string
+        default: "integration-coverage"
+      run_on_draft:
+        description: "Run even on draft PRs (default: skip on draft to save CI minutes)"
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+jobs:
+  integration-coverage:
+    if: ${{ inputs.run_on_draft || vars.CI_RUN_ON_DRAFT == 'true' || github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    name: Integration Coverage (go test + Codecov)
+    runs-on: ${{ fromJson(inputs.runner) }}
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+
+      - name: Detect integration-tagged test files
+        id: detect
+        env:
+          BUILD_TAG: ${{ inputs.build-tag }}
+          WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          if grep -rlE --include='*.go' \
+              -e "^//go:build.*\\<${BUILD_TAG}\\>" \
+              -e "^// \\+build.*\\<${BUILD_TAG}\\>" \
+              . >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=No Integration Tests::No files carrying the '${BUILD_TAG}' build tag were found under ${WORKING_DIRECTORY}; skipping the integration-coverage run and gate."
+          fi
+
+      - name: Run integration tests with coverage
+        if: steps.detect.outputs.found == 'true'
+        env:
+          TEST_TIMEOUT: ${{ inputs.test-timeout }}
+          BUILD_TAG: ${{ inputs.build-tag }}
+        run: |
+          set -euo pipefail
+          go test ./... \
+            -tags="$BUILD_TAG" \
+            -coverprofile=coverage-integration.out \
+            -covermode=atomic \
+            -count=1 \
+            -timeout="$TEST_TIMEOUT"
+
+      - name: Coverage summary
+        if: steps.detect.outputs.found == 'true'
+        run: go tool cover -func=coverage-integration.out | tail -1
+
+      - name: Enforce coverage threshold
+        if: ${{ steps.detect.outputs.found == 'true' && inputs.coverage-threshold > 0 }}
+        env:
+          COVERAGE_THRESHOLD: ${{ inputs.coverage-threshold }}
+        run: |
+          set -euo pipefail
+          PCT=$(go tool cover -func=coverage-integration.out | tail -1 | awk '{print $3}' | tr -d '%')
+          echo "Integration line coverage: ${PCT}% (threshold: ${COVERAGE_THRESHOLD}%)"
+          awk "BEGIN { exit (${PCT} < ${COVERAGE_THRESHOLD}) ? 1 : 0 }" || {
+            echo "::error::Integration coverage ${PCT}% is below the required threshold of ${COVERAGE_THRESHOLD}%"
+            exit 1
+          }
+
+      - name: Upload coverage to Codecov
+        if: ${{ steps.detect.outputs.found == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2
+        with:
+          files: coverage-integration.out
+          flags: ${{ inputs.codecov-flags }}
+          name: ${{ inputs.codecov-name }}
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
