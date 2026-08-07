@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.3.0...v1.4.0) (2026-08-07)
+
+
+### Features
+
+* **workflows:** add goprivate support to coverage and mutation jobs ([#100](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/100)) ([63280b0](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/63280b0e2572179d54d7d461098983d9d6c79611))
+
 ## [1.3.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.2.0...v1.3.0) (2026-08-07)
 
 
