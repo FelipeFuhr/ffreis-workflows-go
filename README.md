@@ -21,6 +21,7 @@ uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-build.yml@<sha> # vX.Y
 | `go-test.yml` | `go test -race -shuffle=on` + artifact upload | `go-version`, `working-directory`, `test-args` |
 | `go-build.yml` | `go build ./...` | `go-version`, `working-directory`, `build-args` |
 | `go-coverage.yml` | Coverage report + Codecov upload | `go-version`, `working-directory`; secret `CODECOV_TOKEN` |
+| `go-integration-coverage.yml` | Integration-tagged coverage report + Codecov upload (separate metric from unit coverage; opt-in gate via `coverage-threshold`) | `go-version`, `working-directory`, `build-tag`, `coverage-threshold`; secret `CODECOV_TOKEN` |
 | `go-security.yml` | `govulncheck` CVE scan | `go-version`, `working-directory` |
 | `go-semgrep.yml` | Semgrep SAST (no upload) | `working-directory` |
 | `go-semgrep-sarif.yml` | Semgrep SAST with SARIF upload | `working-directory`, `upload-sarif` |

@@ -124,6 +124,19 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  integration-coverage:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/go-integration-coverage.yml
+    with:
+      working-directory: examples/hello
+      # examples/hello/calculator ships one integration-tagged test
+      # (calculator_integration_test.go) purely to exercise this gate in
+      # self-test; 60 is illustrative, not a fleet-wide floor recommendation.
+      coverage-threshold: 60
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   docs:
     permissions:
       contents: read

@@ -1,8 +1,8 @@
 # Agent Context
 
 **This repo:** `ffreis-workflows-go` — reusable GitHub Actions workflow library for Go
-projects. Covers fmt, lint, test, matrix build, coverage, SBOM, container build,
-fuzzing, mutation testing, and OSV scanning.
+projects. Covers fmt, lint, test, matrix build, unit + integration coverage, SBOM,
+container build, fuzzing, mutation testing, and OSV scanning.
 
 ## Non-obvious rules (read before changing anything)
 
@@ -39,6 +39,21 @@ fuzzing, mutation testing, and OSV scanning.
    `secrets:` naming convention (e.g. `CI_REPO_READ_TOKEN` in
    `ffreis-workflows-general`'s `general-kb-sync.yml`) — GitHub Actions secret
    names cannot contain hyphens.
+
+8. **`go-integration-coverage.yml` is a separate gated metric from
+   `go-coverage.yml`**, not a variant of it — same input/step shape
+   (`coverage-threshold`, opt-in gate at 0), but its own Codecov flag
+   (`integration` vs `unit`) and its own coverage file
+   (`coverage-integration.out` vs `coverage.out`) so the two never collide on
+   upload. It only runs `go test -tags=<build-tag>` (default tag:
+   `integration`) when at least one file in `working-directory` actually
+   declares that build tag (`//go:build integration` / `// +build
+   integration`) — checked by grep before any test runs. This guard exists
+   because untagged test files always run regardless of `-tags`, so a repo
+   with zero integration-tagged files would otherwise silently re-report its
+   unit coverage as "integration coverage" (a false pass/fail signal) instead
+   of skipping the gate. `examples/hello/calculator/calculator_integration_test.go`
+   is the fleet's reference example of a tagged file.
 
 ## Structure
 
