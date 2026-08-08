@@ -4,10 +4,10 @@ on:
   workflow_call:
     inputs:
       runner:
-        description: "JSON runner label(s); default GitHub-hosted."
+        description: "JSON runner label(s); default self-hosted [self-hosted, local]."
         required: false
         type: string
-        default: '["ubuntu-latest"]'
+        default: '["self-hosted","local"]'
       go-version:
         description: 'Go version'
         required: false
