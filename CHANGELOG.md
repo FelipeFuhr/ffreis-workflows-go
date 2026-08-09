@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.4.0...v1.4.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **ci:** remove redundant standalone scorecards.yml ([#104](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/104)) ([3e34d2a](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/3e34d2a00ddd0fc9a659a8b7a8c75107690f2209))
+* **runner:** default the runner input to self-hosted, not ubuntu-latest ([#102](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/102)) ([eb48820](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/eb48820e594b2d1d387518eba957adee1906c826))
+
 ## [1.4.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.3.0...v1.4.0) (2026-08-07)
 
 
