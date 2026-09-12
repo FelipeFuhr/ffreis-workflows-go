@@ -219,7 +219,8 @@ jobs:
         if: ${{ inputs.run-govulncheck }}
         uses: golang/govulncheck-action@31f7c5463448f83528bd771c2d978d940080c9fd # v1
         with:
-          go-version-input: ${{ inputs.go-version }}
+          # "stable", not inputs.go-version -- see go-security.yml for why.
+          go-version-input: "stable"
           check-latest: true
           work-dir: ${{ inputs.working-directory }}
 

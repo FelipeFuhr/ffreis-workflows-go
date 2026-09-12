@@ -72,6 +72,14 @@ jobs:
       - name: Run govulncheck
         uses: golang/govulncheck-action@31f7c5463448f83528bd771c2d978d940080c9fd # v1
         with:
-          go-version-input: ${{ inputs.go-version }}
+          # "stable" (not inputs.go-version): govulncheck-action always does
+          # `go install golang.org/x/vuln/cmd/govulncheck@latest`, which can
+          # require a newer Go than whatever a caller pins to build/test its
+          # own product code. Pinning this to the caller's go-version broke
+          # every fleet repo on 2026-09-12 when x/vuln@v1.8.0 started
+          # requiring Go >=1.26 while most callers still pin 1.25.x -- the
+          # scanner's own toolchain is an orthogonal concern from the
+          # product's build toolchain, so let it float to whatever's current.
+          go-version-input: "stable"
           check-latest: true
           work-dir: ${{ inputs.working-directory }}
