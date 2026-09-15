@@ -26,13 +26,15 @@ container build, fuzzing, mutation testing, and OSV scanning.
    Containerfile, and CI config. Don't simplify or split it.
 
 7. **Private cross-repo Go dependency access (`goprivate` input).**
-   `go-mod-tidy-check.yml`, `go-lint.yml`, and `go-test.yml` accept an optional
-   `goprivate` string input plus an optional `GIT_AUTH_TOKEN` secret. When
+   `go-mod-tidy-check.yml`, `go-lint.yml`, `go-test.yml`, `go-sonar.yml`, and
+   `go-cross-build-matrix.yml` accept an optional `goprivate` string input plus
+   an optional `GIT_AUTH_TOKEN` secret. When
    `goprivate` is non-empty, a step sets `GOPRIVATE`/`GONOSUMCHECK` via
    `$GITHUB_ENV` and (if `GIT_AUTH_TOKEN` is set) configures
    `git config --global url."https://x-access-token:${GIT_AUTH_TOKEN}@github.com/".insteadOf
-   "https://github.com/"` so `go mod`/`go vet`/`go test`/golangci-lint can
-   resolve private module paths. Both default to empty/unset — zero behavior
+   "https://github.com/"` so `go mod`/`go vet`/`go test`/`go build`/golangci-lint/
+   the SonarCloud scanner's own `go test` coverage step can resolve private
+   module paths. Both default to empty/unset — zero behavior
    change for existing callers. `go-fmt.yml` is intentionally NOT wired: `gofmt`
    never resolves modules, so it has nothing to authenticate. Secret name uses
    `GIT_AUTH_TOKEN` (SCREAMING_SNAKE_CASE), matching the fleet's existing
