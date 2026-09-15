@@ -57,6 +57,25 @@ container build, fuzzing, mutation testing, and OSV scanning.
    of skipping the gate. `examples/hello/calculator/calculator_integration_test.go`
    is the fleet's reference example of a tagged file.
 
+9. **`go-mutation.yml`'s `packages` input must be plain directories, never
+   `...`-suffixed.** gremlins' `unleash [path]` takes exactly one plain
+   directory path — not a go-list `...` pattern, and not several
+   space-separated paths in one invocation (more than one array element in
+   a single call fails loudly with "accepts at most 1 arg(s)"). A single
+   `...`-suffixed path (the default, `./internal`, and the shape most
+   callers' READMEs still show, e.g. `./internal/...`) used to fail
+   silently instead: gremlins doesn't understand the glob, prints "No
+   results to report." and still exits 0 — a vacuous pass, zero mutants
+   tested, gate still green. The "Run mutation testing" step now loops
+   over each space-separated entry in `packages`, stripping a trailing
+   `/...` before invoking gremlins once per package, and propagates the
+   worst exit code plus the minimum efficacy score across the run. Mirrors
+   the identical fix already applied in `ffreis-platform-configctl`'s own
+   Makefile `mutation:` target — verify any change here against a real
+   package with real mutants (`examples/hello/calculator` has some), not
+   just a clean exit code, since exit 0 is exactly what the bug also
+   produced.
+
 ## Structure
 
 ```
