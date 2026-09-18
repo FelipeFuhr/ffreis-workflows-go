@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.4.1...v1.5.0) (2026-09-18)
+
+
+### Features
+
+* **goprivate:** wire private Go module access into go-sonar and go-cross-build-matrix ([#106](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/106)) ([bb787e7](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/bb787e73e9141ce65d57e3ea3df7e44913fb24c7))
+* **integration-coverage:** add opt-in dynamodb-local input ([#109](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/109)) ([0f8fa62](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/0f8fa62cdfc90b1543fbd95e9655f8501e203812))
+
+
+### Bug Fixes
+
+* **mutation:** stop passing gremlins a go-list ... pattern it silently ignores ([#108](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/108)) ([f64a2ae](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/f64a2ae5810fd2f661ec9f4e1d2d9e2279f54cd6))
+
 ## [1.4.1](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.4.0...v1.4.1) (2026-08-09)
 
 
