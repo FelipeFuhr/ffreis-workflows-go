@@ -74,6 +74,7 @@ jobs:
   test:
     permissions:
       contents: read
+      id-token: write # permissions-mirror: go-test.yml needs this for L2 S3 cache OIDC
     uses: ./.github/workflows/go-test.yml
     with:
       working-directory: examples/hello
