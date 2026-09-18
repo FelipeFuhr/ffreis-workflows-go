@@ -146,6 +146,26 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  integration-coverage-dynamodb-local:
+    if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
+    # Smoke test for the dynamodb-local input: proves a real DynamoDB Local
+    # container actually starts, becomes reachable, answers a real DynamoDB
+    # API call, and gets cleaned up — not just that the YAML parses. Needs
+    # Docker, which the self-hosted "local" default doesn't have yet (same
+    # constraint go-container.yml already documents), hence the runner
+    # override.
+    uses: ./.github/workflows/go-integration-coverage.yml
+    with:
+      runner: '["ubuntu-latest"]'
+      working-directory: examples/hello
+      dynamodb-local: true
+      codecov-flags: integration-smoke
+      codecov-name: integration-coverage-dynamodb-local-smoke
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   docs:
     permissions:
       contents: read
