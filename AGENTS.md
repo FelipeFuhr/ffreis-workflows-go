@@ -57,6 +57,26 @@ container build, fuzzing, mutation testing, and OSV scanning.
    of skipping the gate. `examples/hello/calculator/calculator_integration_test.go`
    is the fleet's reference example of a tagged file.
 
+   Its `dynamodb-local` boolean input (default `false`, additive) starts a
+   real `amazon/dynamodb-local:3.3.1` container via explicit `docker run -d`/
+   `docker stop` steps — not a `services:` block, which GitHub Actions can't
+   gate on an input — waits for it with a real curl-based readiness loop
+   (any completed HTTP transaction on :8000, not a fixed sleep), then proves
+   the DynamoDB API itself responds via `aws dynamodb list-tables
+   --endpoint-url` (stronger than "port is open") before exporting
+   `DYNAMODB_ENDPOINT=http://localhost:8000` for the test step (matching the
+   env var + default every current consumer's own `ddbEndpoint()`-style
+   helper already reads). Without this,
+   an integration test written to "skip when nothing is reachable" (a
+   deliberate fleet convention so `go test ./...` stays green without a
+   container runtime) silently skips forever in CI with the job still
+   reporting green — confirmed for real in a caller's own log, not just by
+   reading the YAML. **Requires a runner with Docker.** The self-hosted
+   `local` default does not have a container runtime provisioned (same
+   constraint `go-container.yml` already documents for its own `runner`
+   default) — any caller setting `dynamodb-local: true` must also pass
+   `runner: '["ubuntu-latest"]'`.
+
 9. **`go-mutation.yml`'s `packages` input must be plain directories, never
    `...`-suffixed.** gremlins' `unleash [path]` takes exactly one plain
    directory path — not a go-list `...` pattern, and not several
