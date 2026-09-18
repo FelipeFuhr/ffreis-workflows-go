@@ -96,6 +96,19 @@ container build, fuzzing, mutation testing, and OSV scanning.
    just a clean exit code, since exit 0 is exactly what the bug also
    produced.
 
+10. **`govulncheck-go-version` is decoupled from `go-version` on purpose.**
+    `golang/govulncheck-action` always runs `go install
+    golang.org/x/vuln/cmd/govulncheck@latest` — it has no version-pin input of
+    its own. When x/vuln raises its own Go floor (v1.8.0 needs Go >= 1.26),
+    every caller still on `go-version: "1.25.x"` fails at the install step,
+    before a single package is scanned. `go-security.yml` and `go-test.yml`
+    (its embedded govulncheck step) both take a separate
+    `govulncheck-go-version` input, defaulted to a version that satisfies the
+    current x/vuln floor, so a future floor bump is fixed by bumping this one
+    default rather than every consumer's `go-version`. The scan itself still
+    honours the target module's own `go` directive in `go.mod` — this input
+    only controls the toolchain used to install/run the govulncheck binary.
+
 ## Structure
 
 ```
