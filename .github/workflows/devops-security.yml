@@ -47,6 +47,8 @@ jobs:
       working-directory: "."
       scan-history: true
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   trivy-fs:
     needs: changes
@@ -64,6 +66,8 @@ jobs:
       scan-ref: "."
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
       fail-on-vuln: ${{ github.event_name != 'pull_request' }}
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   grype-fs:
     needs: changes
@@ -81,6 +85,8 @@ jobs:
       path: "."
       fail-on-vuln: ${{ github.event_name != 'pull_request' }}
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   osv:
     needs: changes
@@ -97,3 +103,5 @@ jobs:
     with:
       working-directory: "."
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'

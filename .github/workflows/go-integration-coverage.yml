@@ -67,6 +67,20 @@ on:
         required: false
         type: string
         default: ""
+      dynamodb-local:
+        description: >
+          When true, starts a real amazon/dynamodb-local container before the
+          test step and stops it after (even on failure), exporting
+          DYNAMODB_ENDPOINT=http://localhost:8000 so integration tests can
+          validate real conditional-write / optimistic-locking behavior
+          instead of a hand-rolled fake. Requires a runner with a working
+          container runtime — the self-hosted "local" default does not have
+          one provisioned yet (same constraint go-container.yml already
+          documents), so pass runner: '["ubuntu-latest"]' alongside this.
+          Default false — zero behavior change for existing callers.
+        required: false
+        type: boolean
+        default: false
     secrets:
       CODECOV_TOKEN:
         required: false
@@ -133,11 +147,59 @@ jobs:
             echo "::notice title=No Integration Tests::No files carrying the '${BUILD_TAG}' build tag were found under ${WORKING_DIRECTORY}; skipping the integration-coverage run and gate."
           fi
 
+      - name: Start DynamoDB Local
+        id: start-dynamodb
+        if: ${{ steps.detect.outputs.found == 'true' && inputs.dynamodb-local }}
+        run: |
+          set -euo pipefail
+          container_id=$(docker run -d --rm \
+            -p 8000:8000 \
+            amazon/dynamodb-local:3.3.1 \
+            -jar DynamoDBLocal.jar -inMemory -sharedDb)
+          echo "container_id=${container_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for DynamoDB Local
+        if: ${{ steps.detect.outputs.found == 'true' && inputs.dynamodb-local }}
+        env:
+          CONTAINER_ID: ${{ steps.start-dynamodb.outputs.container_id }}
+        run: |
+          set -euo pipefail
+          # DynamoDB Local answers any HTTP request (even an unsigned/malformed
+          # one) with a real HTTP response once it's up, so "curl completed a
+          # transaction" (exit 0, regardless of status code — no -f) is a true
+          # readiness signal here, not just "the TCP port accepted a connection".
+          for i in $(seq 1 30); do
+            if curl -s -o /dev/null http://localhost:8000/; then
+              echo "DynamoDB Local is ready on port 8000 (after ${i}s)."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::DynamoDB Local did not become reachable on port 8000 within 30s."
+          docker logs "$CONTAINER_ID" || true
+          exit 1
+
+      - name: Verify DynamoDB Local API responds
+        if: ${{ steps.detect.outputs.found == 'true' && inputs.dynamodb-local }}
+        env:
+          # DynamoDB Local does not verify these against a real AWS account —
+          # it only needs *some* credentials present so the CLI will sign the
+          # request. This call is a second, stronger proof beyond the curl
+          # readiness loop above: a real DynamoDB API round-trip, not just an
+          # open port.
+          AWS_ACCESS_KEY_ID: local
+          AWS_SECRET_ACCESS_KEY: local
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          set -euo pipefail
+          aws dynamodb list-tables --endpoint-url http://localhost:8000
+
       - name: Run integration tests with coverage
         if: steps.detect.outputs.found == 'true'
         env:
           TEST_TIMEOUT: ${{ inputs.test-timeout }}
           BUILD_TAG: ${{ inputs.build-tag }}
+          DYNAMODB_ENDPOINT: ${{ inputs.dynamodb-local && 'http://localhost:8000' || '' }}
         run: |
           set -euo pipefail
           go test ./... \
@@ -146,6 +208,15 @@ jobs:
             -covermode=atomic \
             -count=1 \
             -timeout="$TEST_TIMEOUT"
+
+      - name: Stop DynamoDB Local
+        if: ${{ always() && inputs.dynamodb-local }}
+        env:
+          CONTAINER_ID: ${{ steps.start-dynamodb.outputs.container_id }}
+        run: |
+          if [ -n "$CONTAINER_ID" ]; then
+            docker stop "$CONTAINER_ID" 2>/dev/null || true
+          fi
 
       - name: Coverage summary
         if: steps.detect.outputs.found == 'true'

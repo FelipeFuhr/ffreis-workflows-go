@@ -135,21 +135,40 @@ jobs:
           set -euo pipefail
           read -r -a packages_arr <<< "${PACKAGES:-}"
 
-          # gremlins exits 1 if efficacy < threshold, 0 otherwise
-          # Capture output so we can extract the score for the job output
-          output=$(gremlins unleash \
-            --threshold-efficacy="$THRESHOLD" \
-            "${packages_arr[@]}" 2>&1) || exit_code=$?
+          # gremlins' `unleash [path]` takes exactly ONE plain directory path:
+          # not a go-list `...` pattern, and not several space-separated
+          # paths in one call. More than one array element in a single
+          # invocation fails loudly ("accepts at most 1 arg(s)"), but a
+          # SINGLE `...`-suffixed path (the documented default, e.g.
+          # "./internal/...") fails silently -- gremlins doesn't understand
+          # the glob, prints "No results to report." and still exits 0, a
+          # vacuous pass (zero mutants tested, gate still green). Loop over
+          # each entry instead, stripping the trailing "/..." each one
+          # carries for go-test-flag compatibility, running gremlins once
+          # per package and propagating the worst exit code + minimum score
+          # across the run. Mirrors the fix already applied in
+          # ffreis-platform-configctl's own Makefile `mutation:` target.
+          exit_code=0
+          min_score=""
+          for pkg in "${packages_arr[@]}"; do
+            path="${pkg%/...}"
+            echo "==> gremlins unleash $path"
+            output=$(gremlins unleash --threshold-efficacy="$THRESHOLD" "$path" 2>&1) || exit_code=1
+            echo "$output"
 
-          echo "$output"
+            # Extract score from gremlins summary line: "Test efficacy: XX.XX%"
+            pkg_score=$(echo "$output" | grep -ioE 'efficacy:[[:space:]]*[0-9]+' | grep -oE '[0-9]+' | head -1 || echo "0")
+            if [[ -z "$min_score" || "$pkg_score" -lt "$min_score" ]]; then
+              min_score="$pkg_score"
+            fi
+          done
 
-          # Extract score from gremlins summary line: "Efficacy: XX.XX%"
-          score=$(echo "$output" | grep -oE 'Efficacy:[[:space:]]+[0-9]+' | grep -oE '[0-9]+' | head -1 || echo "0")
+          score="${min_score:-0}"
           echo "score=${score}" >> "$GITHUB_OUTPUT"
 
           echo "::notice title=Mutation Score::Efficacy: ${score}% (threshold: ${THRESHOLD}%)"
 
-          exit "${exit_code:-0}"
+          exit "$exit_code"
 
       - name: Annotate score
         if: always()

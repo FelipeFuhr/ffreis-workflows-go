@@ -41,6 +41,9 @@ jobs:
     permissions:
       contents: read
     uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-workflows-policy.yml@725560858c46d4b6f1f8ec5b7baba8695d05454a # v1.9.2
+    with:
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   codeql-actions:
     permissions:
@@ -52,6 +55,8 @@ jobs:
       languages: actions
       source-root: .
       upload-sarif: false
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   fmt:
     permissions:
@@ -59,6 +64,8 @@ jobs:
     uses: ./.github/workflows/go-fmt.yml
     with:
       working-directory: examples/hello
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   lint:
     permissions:
@@ -67,6 +74,8 @@ jobs:
     uses: ./.github/workflows/go-lint.yml
     with:
       working-directory: examples/hello
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   build:
     permissions:
@@ -74,14 +83,19 @@ jobs:
     uses: ./.github/workflows/go-build.yml
     with:
       working-directory: examples/hello
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   test:
     if: ${{ !github.event.pull_request.draft }}
     permissions:
       contents: read
+      id-token: write # permissions-mirror: go-test.yml needs this for L2 S3 cache OIDC
     uses: ./.github/workflows/go-test.yml
     with:
       working-directory: examples/hello
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   fuzz:
     if: ${{ !github.event.pull_request.draft }}
@@ -93,6 +107,8 @@ jobs:
       fuzz-targets: FuzzParseExpr
       fuzz-time: 10s
       fuzz-parallelism: 1
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   mutation:
     if: ${{ !github.event.pull_request.draft }}
@@ -103,6 +119,8 @@ jobs:
       working-directory: examples/hello
       packages: ./calculator
       threshold: 50
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   sonar:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -112,6 +130,8 @@ jobs:
     with:
       working-directory: examples/hello
       run-on-pr: true
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -121,6 +141,8 @@ jobs:
     uses: ./.github/workflows/go-security.yml
     with:
       working-directory: examples/hello
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   coverage:
     if: ${{ !github.event.pull_request.draft }}
@@ -129,6 +151,8 @@ jobs:
     uses: ./.github/workflows/go-coverage.yml
     with:
       working-directory: examples/hello
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -143,6 +167,28 @@ jobs:
       # (calculator_integration_test.go) purely to exercise this gate in
       # self-test; 60 is illustrative, not a fleet-wide floor recommendation.
       coverage-threshold: 60
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  integration-coverage-dynamodb-local:
+    if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
+    # Smoke test for the dynamodb-local input: proves a real DynamoDB Local
+    # container actually starts, becomes reachable, answers a real DynamoDB
+    # API call, and gets cleaned up — not just that the YAML parses. Needs
+    # Docker, which the self-hosted "local" default doesn't have yet (same
+    # constraint go-container.yml already documents), hence the runner
+    # override.
+    uses: ./.github/workflows/go-integration-coverage.yml
+    with:
+      runner: '["ubuntu-latest"]'
+      working-directory: examples/hello
+      dynamodb-local: true
+      codecov-flags: integration-smoke
+      codecov-name: integration-coverage-dynamodb-local-smoke
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -152,6 +198,8 @@ jobs:
     uses: ./.github/workflows/go-docs.yml
     with:
       working-directory: examples/hello
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   semgrep:
     permissions:
@@ -159,6 +207,8 @@ jobs:
     uses: ./.github/workflows/go-semgrep.yml
     with:
       working-directory: examples/hello
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   semgrep-sarif:
     permissions:
@@ -169,6 +219,8 @@ jobs:
     with:
       working-directory: examples/hello
       upload-sarif: true
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   container:
     permissions:
@@ -187,6 +239,8 @@ jobs:
     uses: ./.github/workflows/go-mod-tidy-check.yml
     with:
       working-directory: examples/hello
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
 
   snyk:
     if: vars.ENABLE_SNYK == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -198,6 +252,8 @@ jobs:
     with:
       working-directory: examples/hello
       upload-sarif: false
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
@@ -208,6 +264,8 @@ jobs:
     uses: ./.github/workflows/go-deepsource-coverage.yml
     with:
       working-directory: examples/hello
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
     secrets:
       DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
 
@@ -220,3 +278,5 @@ jobs:
       working-directory: examples/hello
       targets: |-
         ./...
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'

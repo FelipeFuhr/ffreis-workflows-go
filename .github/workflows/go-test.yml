@@ -39,6 +39,18 @@ on:
         required: false
         type: boolean
         default: true
+      govulncheck-go-version:
+        description: >
+          Go toolchain version used only to install/run govulncheck itself,
+          independent of go-version. golang/govulncheck-action always runs
+          `go install .../govulncheck@latest`, and x/vuln's own floor can rise
+          past whatever go-version pins (x/vuln v1.8.0 requires Go >= 1.26,
+          breaking every 1.25.x caller at the install step). The scan itself
+          still honours the target module's own go directive — this only
+          unblocks installing the tool.
+        required: false
+        type: string
+        default: "1.26.8"
       fresh:
         description: >
           Force a fresh test run by adding -count=1 (disables Go's test-result
@@ -219,8 +231,7 @@ jobs:
         if: ${{ inputs.run-govulncheck }}
         uses: golang/govulncheck-action@31f7c5463448f83528bd771c2d978d940080c9fd # v1
         with:
-          # "stable", not inputs.go-version -- see go-security.yml for why.
-          go-version-input: "stable"
+          go-version-input: ${{ inputs.govulncheck-go-version }}
           check-latest: true
           work-dir: ${{ inputs.working-directory }}
 

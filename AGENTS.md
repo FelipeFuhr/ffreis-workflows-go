@@ -26,13 +26,15 @@ container build, fuzzing, mutation testing, and OSV scanning.
    Containerfile, and CI config. Don't simplify or split it.
 
 7. **Private cross-repo Go dependency access (`goprivate` input).**
-   `go-mod-tidy-check.yml`, `go-lint.yml`, and `go-test.yml` accept an optional
-   `goprivate` string input plus an optional `GIT_AUTH_TOKEN` secret. When
+   `go-mod-tidy-check.yml`, `go-lint.yml`, `go-test.yml`, `go-sonar.yml`, and
+   `go-cross-build-matrix.yml` accept an optional `goprivate` string input plus
+   an optional `GIT_AUTH_TOKEN` secret. When
    `goprivate` is non-empty, a step sets `GOPRIVATE`/`GONOSUMCHECK` via
    `$GITHUB_ENV` and (if `GIT_AUTH_TOKEN` is set) configures
    `git config --global url."https://x-access-token:${GIT_AUTH_TOKEN}@github.com/".insteadOf
-   "https://github.com/"` so `go mod`/`go vet`/`go test`/golangci-lint can
-   resolve private module paths. Both default to empty/unset — zero behavior
+   "https://github.com/"` so `go mod`/`go vet`/`go test`/`go build`/golangci-lint/
+   the SonarCloud scanner's own `go test` coverage step can resolve private
+   module paths. Both default to empty/unset — zero behavior
    change for existing callers. `go-fmt.yml` is intentionally NOT wired: `gofmt`
    never resolves modules, so it has nothing to authenticate. Secret name uses
    `GIT_AUTH_TOKEN` (SCREAMING_SNAKE_CASE), matching the fleet's existing
@@ -54,6 +56,58 @@ container build, fuzzing, mutation testing, and OSV scanning.
    unit coverage as "integration coverage" (a false pass/fail signal) instead
    of skipping the gate. `examples/hello/calculator/calculator_integration_test.go`
    is the fleet's reference example of a tagged file.
+
+   Its `dynamodb-local` boolean input (default `false`, additive) starts a
+   real `amazon/dynamodb-local:3.3.1` container via explicit `docker run -d`/
+   `docker stop` steps — not a `services:` block, which GitHub Actions can't
+   gate on an input — waits for it with a real curl-based readiness loop
+   (any completed HTTP transaction on :8000, not a fixed sleep), then proves
+   the DynamoDB API itself responds via `aws dynamodb list-tables
+   --endpoint-url` (stronger than "port is open") before exporting
+   `DYNAMODB_ENDPOINT=http://localhost:8000` for the test step (matching the
+   env var + default every current consumer's own `ddbEndpoint()`-style
+   helper already reads). Without this,
+   an integration test written to "skip when nothing is reachable" (a
+   deliberate fleet convention so `go test ./...` stays green without a
+   container runtime) silently skips forever in CI with the job still
+   reporting green — confirmed for real in a caller's own log, not just by
+   reading the YAML. **Requires a runner with Docker.** The self-hosted
+   `local` default does not have a container runtime provisioned (same
+   constraint `go-container.yml` already documents for its own `runner`
+   default) — any caller setting `dynamodb-local: true` must also pass
+   `runner: '["ubuntu-latest"]'`.
+
+9. **`go-mutation.yml`'s `packages` input must be plain directories, never
+   `...`-suffixed.** gremlins' `unleash [path]` takes exactly one plain
+   directory path — not a go-list `...` pattern, and not several
+   space-separated paths in one invocation (more than one array element in
+   a single call fails loudly with "accepts at most 1 arg(s)"). A single
+   `...`-suffixed path (the default, `./internal`, and the shape most
+   callers' READMEs still show, e.g. `./internal/...`) used to fail
+   silently instead: gremlins doesn't understand the glob, prints "No
+   results to report." and still exits 0 — a vacuous pass, zero mutants
+   tested, gate still green. The "Run mutation testing" step now loops
+   over each space-separated entry in `packages`, stripping a trailing
+   `/...` before invoking gremlins once per package, and propagates the
+   worst exit code plus the minimum efficacy score across the run. Mirrors
+   the identical fix already applied in `ffreis-platform-configctl`'s own
+   Makefile `mutation:` target — verify any change here against a real
+   package with real mutants (`examples/hello/calculator` has some), not
+   just a clean exit code, since exit 0 is exactly what the bug also
+   produced.
+
+10. **`govulncheck-go-version` is decoupled from `go-version` on purpose.**
+    `golang/govulncheck-action` always runs `go install
+    golang.org/x/vuln/cmd/govulncheck@latest` — it has no version-pin input of
+    its own. When x/vuln raises its own Go floor (v1.8.0 needs Go >= 1.26),
+    every caller still on `go-version: "1.25.x"` fails at the install step,
+    before a single package is scanned. `go-security.yml` and `go-test.yml`
+    (its embedded govulncheck step) both take a separate
+    `govulncheck-go-version` input, defaulted to a version that satisfies the
+    current x/vuln floor, so a future floor bump is fixed by bumping this one
+    default rather than every consumer's `go-version`. The scan itself still
+    honours the target module's own `go` directive in `go.mod` — this input
+    only controls the toolchain used to install/run the govulncheck binary.
 
 ## Structure
 
