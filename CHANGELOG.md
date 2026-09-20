@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.1](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.5.0...v1.5.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* add ready_for_review to pull_request triggers ([#105](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/105)) ([29bc0ba](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/29bc0baf6b05e02d90978104ee23d05814a366c7))
+* **ci:** pin own internal CI to ubuntu-latest — public repo can't use self-hosted ([#110](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/110)) ([cacc34e](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/cacc34e057e98c09eecb7c1efc4903d655d1a3cf))
+
 ## [1.5.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.4.1...v1.5.0) (2026-09-18)
 
 
