@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.5.1...v1.6.0) (2026-09-24)
+
+
+### Features
+
+* **fuzz:** accept goprivate and GIT_AUTH_TOKEN ([#112](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/112)) ([af4e1b0](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/af4e1b06b1b361d4513e337acb89f06522f7d5e3))
+
 ## [1.5.1](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.5.0...v1.5.1) (2026-09-19)
 
 
