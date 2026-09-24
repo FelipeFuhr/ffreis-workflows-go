@@ -58,11 +58,24 @@ on:
         required: false
         type: string
         default: 'Fuzz'
+      goprivate:
+        description: >
+          Comma-separated GOPRIVATE glob pattern(s) for private cross-repo Go
+          dependencies (e.g. 'github.com/FelipeFuhr/*'). Empty (default) leaves
+          GOPRIVATE/git auth untouched — zero-impact for existing callers.
+        required: false
+        type: string
+        default: ""
       run_on_draft:
         description: "Run even on draft PRs (default: skip on draft to save CI minutes)"
         required: false
         type: boolean
         default: false
+
+    secrets:
+      GIT_AUTH_TOKEN:
+        description: "Token for private cross-repo Go module access (used with goprivate)"
+        required: false
 
 jobs:
   fuzz:
@@ -83,6 +96,28 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Configure private Go module access
+        # Fuzzing compiles and runs the package under test, so it resolves the
+        # module graph like any `go test`. Without this a caller with a private
+        # cross-repo dependency fails at "Build packages" with
+        # `fatal: could not read Username for 'https://github.com'`. The other
+        # go-* workflows have carried this step since PR #106; go-fuzz was
+        # missed, which ffreis-platform-configctl hit when pkg/validate started
+        # importing ffreis-platform-ctlcore.
+        if: ${{ inputs.goprivate != '' }}
+        env:
+          GOPRIVATE_INPUT: ${{ inputs.goprivate }}
+          GIT_AUTH_TOKEN: ${{ secrets.GIT_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          {
+            echo "GOPRIVATE=${GOPRIVATE_INPUT}"
+            echo "GONOSUMCHECK=1"
+          } >> "$GITHUB_ENV"
+          if [ -n "$GIT_AUTH_TOKEN" ]; then
+            git config --global url."https://x-access-token:${GIT_AUTH_TOKEN}@github.com/".insteadOf "https://github.com/"
+          fi
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
