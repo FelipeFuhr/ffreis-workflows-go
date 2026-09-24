@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.6.0...v1.7.0) (2026-09-24)
+
+
+### Features
+
+* **coverage:** add coverage-exclude for generated code ([#114](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/114)) ([762e728](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/762e7289ebd4e85d08ffd587fe49cddcfecd47ca))
+
 ## [1.6.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.5.1...v1.6.0) (2026-09-24)
 
 
