@@ -109,6 +109,37 @@ container build, fuzzing, mutation testing, and OSV scanning.
     honours the target module's own `go` directive in `go.mod` — this input
     only controls the toolchain used to install/run the govulncheck binary.
 
+11. **`coverage-exclude` filters the PROFILE, never the test run.**
+    `go-coverage.yml` and `go-integration-coverage.yml` take an optional ERE
+    matched against the file paths in the coverage profile. Matching entries are
+    dropped before the threshold is measured **and** before the Codecov upload,
+    so the gate, the badge and the repo's own `make coverage` all report one
+    number. It exists for generated code — protobuf, mocks, sqlc, ent — where a
+    surviving statement is a fact about the generator, not the repo: adding one
+    committed `*.pb.go` package took a real caller from 86.6% to 57.8% and
+    failed a 90% gate on code no human wrote.
+
+    `go test ./...` is deliberately left alone. Narrowing the test command
+    instead would stop compiling the generated package, and a build break in
+    generated code would then pass CI.
+
+    **A pattern that matches nothing FAILS the job, and so does one that
+    matches everything.** A filter silently matching zero entries is the exact
+    failure this fleet keeps rediscovering — the gate looks configured, reports
+    the unfiltered number, and nobody notices. The step prints the observed
+    profile paths on that failure so the fix is one read, not a guess.
+
+    The `coverage-exclude-generated` job in `ci.yml` is the self-test, and it is
+    a real one: `examples/hello/generated/` is an untested generated-code
+    fixture, the threshold (60) sits between the score with it counted (37.5%)
+    and without (67.7%), so **removing the input turns that job red**. Do not
+    add tests for that fixture — a covered fixture makes the self-test pass for
+    the wrong reason.
+
+    Sonar measures coverage independently, so a repo using this input must also
+    state the exclusion in `sonar-project.properties`
+    (`sonar.coverage.exclusions`) or the two will disagree about the same code.
+
 ## Structure
 
 ```
