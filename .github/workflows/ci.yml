@@ -167,6 +167,30 @@ jobs:
       # (calculator_integration_test.go) purely to exercise this gate in
       # self-test; 60 is illustrative, not a fleet-wide floor recommendation.
       coverage-threshold: 60
+      # examples/hello/generated is an untested generated-code fixture; without
+      # this the example sinks to 37.5% and this gate fails on its own fixture.
+      coverage-exclude: '/generated/'
+      # public repo: self-hosted runners are structurally unavailable here
+      runner: '["ubuntu-latest"]'
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # Self-test for coverage-exclude. This job is the proof, not the docs: the
+  # threshold is set above what examples/hello scores WITH the generated
+  # fixture counted (37.5%) and below what it scores without it (67.7%), so it
+  # passes only while the input actually drops those entries. Delete the
+  # `coverage-exclude` line below and this job goes red.
+  coverage-exclude-generated:
+    if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/go-coverage.yml
+    with:
+      working-directory: examples/hello
+      coverage-exclude: '/generated/'
+      coverage-threshold: 60
+      codecov-flags: unit-excl-generated
+      codecov-name: coverage-exclude-generated-selftest
       # public repo: self-hosted runners are structurally unavailable here
       runner: '["ubuntu-latest"]'
     secrets:

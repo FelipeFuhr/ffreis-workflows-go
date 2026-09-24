@@ -46,6 +46,23 @@ on:
         description: "Minimum integration line coverage percentage (0 = no gate)"
         type: number
         default: 0
+      coverage-exclude:
+        description: >
+          Extended regular expression (ERE) matched against the FILE PATHS in
+          the coverage profile. Matching entries are dropped before the
+          threshold is measured and before the profile is uploaded, so the
+          gate, the Codecov report and a repo's local `make coverage` all
+          report the same number. Intended for GENERATED code — protobuf,
+          mocks, sqlc, ent — where a surviving statement is a fact about the
+          generator, not about the repo. Example: '/proto/gen/'.
+          Tests still RUN over the excluded packages: only the profile is
+          filtered, never `go test ./...`, so a build break in generated code
+          still fails the job. Empty (the default) measures everything.
+          A pattern that matches NOTHING fails the job rather than passing
+          quietly — see the filter step.
+        required: false
+        type: string
+        default: ""
       codecov-flags:
         description: "Codecov flags"
         type: string
@@ -217,6 +234,56 @@ jobs:
           if [ -n "$CONTAINER_ID" ]; then
             docker stop "$CONTAINER_ID" 2>/dev/null || true
           fi
+
+      # The detect guard is required, not decorative: when no file declares the
+      # build tag the test step above never ran, so there is no profile to
+      # filter and an unguarded filter would fail the job on a repo that simply
+      # has no integration tests yet.
+      - name: Exclude generated code from the coverage measurement
+        if: ${{ steps.detect.outputs.found == 'true' && inputs.coverage-exclude != '' }}
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          COVERAGE_EXCLUDE: ${{ inputs.coverage-exclude }}
+          PROFILE: coverage-integration.out
+        run: |
+          set -euo pipefail
+
+          # Line 1 of a Go coverage profile is the mode header ("mode: atomic").
+          # It is not a file entry and must survive the filter, or every later
+          # `go tool cover` call fails with "bad mode line".
+          before_pct=$(go tool cover -func="$PROFILE" | tail -1 | awk '{print $3}')
+          before_lines=$(tail -n +2 "$PROFILE" | wc -l | tr -d ' ')
+
+          head -1 "$PROFILE" > "$PROFILE.filtered"
+          tail -n +2 "$PROFILE" | grep -Ev "$COVERAGE_EXCLUDE" >> "$PROFILE.filtered" || true
+
+          after_lines=$(tail -n +2 "$PROFILE.filtered" | wc -l | tr -d ' ')
+          dropped=$((before_lines - after_lines))
+
+          # A filter that matches nothing is the failure mode this input exists
+          # to avoid repeating: the gate would look configured while excluding
+          # nothing, and the number it reports would silently be the unfiltered
+          # one. Refuse rather than pass.
+          if [ "$dropped" -eq 0 ]; then
+            echo "::error::coverage-exclude '$COVERAGE_EXCLUDE' matched no entries in $PROFILE."
+            echo "::error::Nothing was excluded, so this gate is not measuring what it claims."
+            echo "::error::Fix or remove the pattern. Profile paths look like:"
+            tail -n +2 "$PROFILE" | cut -d: -f1 | sort -u | head -20
+            exit 1
+          fi
+
+          # Everything excluded would make the percentage meaningless (and
+          # `go tool cover` reports no total line at all for an empty profile).
+          if [ "$after_lines" -eq 0 ]; then
+            echo "::error::coverage-exclude '$COVERAGE_EXCLUDE' matched EVERY entry in $PROFILE."
+            echo "::error::There is nothing left to measure. Narrow the pattern."
+            exit 1
+          fi
+
+          mv "$PROFILE.filtered" "$PROFILE"
+          after_pct=$(go tool cover -func="$PROFILE" | tail -1 | awk '{print $3}')
+          echo "coverage-exclude '$COVERAGE_EXCLUDE': dropped $dropped of $before_lines profile entries"
+          echo "  before: $before_pct   after: $after_pct"
 
       - name: Coverage summary
         if: steps.detect.outputs.found == 'true'
