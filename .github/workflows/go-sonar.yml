@@ -67,7 +67,9 @@ jobs:
       contents: read
     name: SonarCloud
     runs-on: ${{ fromJson(inputs.runner) }}
-    if: github.event_name != 'pull_request' || inputs.run-on-pr
+    if: |
+      (github.event_name != 'pull_request' || inputs.run-on-pr) &&
+      (inputs.run_on_draft || vars.CI_RUN_ON_DRAFT == 'true' || github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
