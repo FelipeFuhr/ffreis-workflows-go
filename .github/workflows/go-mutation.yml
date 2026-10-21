@@ -57,6 +57,51 @@ on:
         required: false
         type: string
         default: ""
+      in-diff:
+        description: >-
+          On pull_request events, mutate ONLY the non-test .go files this PR
+          changed (gremlins' native -D/--diff) instead of the whole
+          `packages` tree. Intended as a fast PR-time gate that complements
+          — not replaces — the existing weekly/monthly `schedule:` run,
+          which stays the full sweep that recovers whole-module coverage.
+
+          TWO CORRECTNESS GOTCHAS, found by probing gremlins v0.6.0 directly
+          (v0.6.0 is latest per `go list -m -versions` — nothing newer to
+          upgrade to):
+
+          1. gremlins' `--diff` match is PATH-FORMAT SENSITIVE: it compares
+          each mutant's AST position (recorded relative to whatever
+          directory `unleash [path]` was given) against `git diff`'s
+          REPO-ROOT-relative paths. Invoking it per-package the way the
+          non-diff path below does (e.g. `gremlins unleash --diff <ref>
+          internal`) makes EVERY mutant mismatch and report SKIPPED — even
+          ones inside files the diff did change. Reproduced directly: a
+          diff touching only `internal/b.go` scored "Test efficacy: 0.00%"
+          (0 killed, 0 lived — a vacuous FAIL, not the usual vacuous-pass
+          failure mode) when `unleash`'d against `internal`, and the
+          correct 100% (2 real mutants KILLED, the untouched file's mutant
+          correctly SKIPPED) once invoked at the module root with path ".".
+          So when in-diff is active this workflow ALWAYS calls gremlins
+          with path "." — never the `packages` loop — which is only
+          correct when `working-directory` IS the git repository root; a
+          guard step below fails loudly (rather than silently scoping
+          wrong) if it isn't.
+
+          2. An EMPTY diff does not make gremlins skip anything: internally,
+          `Diff.IsChanged` returns true for every position when its diff map
+          is empty, so a PR that changes no .go file makes gremlins silently
+          fall back to mutating the WHOLE module — the same cost as not
+          passing `--diff` at all, exactly backwards from the fast no-op
+          you'd want. So this workflow computes the merge-base diff itself
+          first (scoped to non-test `*.go` files — gremlins never mutates
+          `_test.go`, so a diff touching only tests has nothing for `--diff`
+          to find either) and skips invoking gremlins entirely when that
+          diff is empty, rather than relying on gremlins' own fallback.
+
+          Ignored on non-pull_request events, which have no base to diff.
+        required: false
+        type: boolean
+        default: false
     outputs:
       mutation-score:
         description: 'Achieved mutation efficacy score (integer, 0–100)'
@@ -87,6 +132,13 @@ jobs:
           egress-policy: audit
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # fetch-depth 0 only when in-diff needs a merge-base against the PR's
+          # base branch. Quoted so the boolean ternary doesn't silently
+          # evaluate `inputs.in-diff && 0 || 1` to the unquoted-0 footgun
+          # ffreis-workflows-rust's rust-mutation.yml already documents (bare
+          # `0` is falsy to the `||`, so it would always fall through to 1).
+          fetch-depth: ${{ inputs.in-diff && '0' || '1' }}
 
       - name: Configure private Go module access
         if: ${{ inputs.goprivate != '' }}
@@ -109,9 +161,67 @@ jobs:
           cache: true
           cache-dependency-path: ${{ inputs.working-directory }}/go.sum
 
+      # Computes whether there is anything for --diff to find, BEFORE
+      # installing gremlins — see the `in-diff` input for why gremlins
+      # itself cannot be trusted to make this call (an empty diff makes it
+      # silently fall back to a full run, not a no-op).
+      - name: Compute PR diff for --diff
+        id: diff
+        if: ${{ inputs.in-diff && github.event_name == 'pull_request' }}
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+
+          # gremlins computes its OWN `git diff --merge-base <ref>` from
+          # whatever directory it is invoked in, using REPO-ROOT-relative
+          # paths unconditionally (no --relative equivalent exists to scope
+          # it to a subdirectory the way cargo-mutants' --in-diff is scoped
+          # in ffreis-workflows-rust). So in-diff only matches correctly when
+          # this job's working-directory IS the repo root — verify that
+          # before doing anything else, rather than silently producing a
+          # gate that scores every mutant SKIPPED.
+          toplevel="$(git rev-parse --show-toplevel)"
+          if [[ "$(pwd -P)" != "$(cd "$toplevel" && pwd -P)" ]]; then
+            echo "::error title=Mutation diff error::in-diff requires working-directory to be the git repository root. gremlins matches its own git-diff output (repo-root-relative paths) against each mutant's AST position (relative to the 'path' given to 'unleash') — any other combination mismatches silently, scoring every mutant SKIPPED. Set working-directory to the repo root, or drop in-diff for this caller."
+            exit 1
+          fi
+
+          base=""
+          for candidate in "origin/${BASE_REF}" "${BASE_REF}"; do
+            if git rev-parse --verify --quiet "$candidate" >/dev/null 2>&1; then
+              base="$candidate"
+              break
+            fi
+          done
+          if [[ -z "$base" ]]; then
+            echo "::error title=Mutation diff error::cannot resolve base ref '${BASE_REF}'. Ensure the checkout used fetch-depth: 0."
+            exit 1
+          fi
+          echo "base=${base}" >> "$GITHUB_OUTPUT"
+
+          # Mirrors gremlins' own merge-base diff exactly, so "is there
+          # anything to mutate" agrees with what --diff "$base" will itself
+          # scope. Test files are excluded: gremlins never mutates
+          # `_test.go` (internal/engine/engine.go), so a diff touching only
+          # tests has nothing for --diff to find either.
+          changed=$(git diff --merge-base "$base" --name-only -- '*.go' \
+            | grep -vc '_test\.go$' || true)
+
+          if [[ "${changed:-0}" -eq 0 ]]; then
+            echo "result=empty" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Mutation skipped::This PR changes no non-test .go file, so there is nothing to mutate."
+          else
+            echo "result=ok" >> "$GITHUB_OUTPUT"
+            echo "Mutating only lines changed by this PR (${changed} changed .go file(s))."
+          fi
+
       # Build the test binary cache before gremlins starts mutating —
-      # avoids redundant compilation on every mutant.
+      # avoids redundant compilation on every mutant. Skipped when in-diff
+      # already determined there is nothing to mutate.
       - name: Pre-build test binary cache
+        if: ${{ steps.diff.outputs.result != 'empty' }}
         env:
           PACKAGES: ${{ inputs.packages }}
         run: |
@@ -120,6 +230,7 @@ jobs:
           go test -run='^$' "${packages_arr[@]}" 2>/dev/null || true
 
       - name: Install gremlins
+        if: ${{ steps.diff.outputs.result != 'empty' }}
         env:
           GREMLINS_VERSION: ${{ inputs.gremlins-version }}
         run: |
@@ -131,37 +242,73 @@ jobs:
         env:
           THRESHOLD: ${{ inputs.threshold }}
           PACKAGES: ${{ inputs.packages }}
+          IN_DIFF: ${{ inputs.in-diff && github.event_name == 'pull_request' }}
+          DIFF_RESULT: ${{ steps.diff.outputs.result }}
+          DIFF_BASE: ${{ steps.diff.outputs.base }}
         run: |
           set -euo pipefail
-          read -r -a packages_arr <<< "${PACKAGES:-}"
 
-          # gremlins' `unleash [path]` takes exactly ONE plain directory path:
-          # not a go-list `...` pattern, and not several space-separated
-          # paths in one call. More than one array element in a single
-          # invocation fails loudly ("accepts at most 1 arg(s)"), but a
-          # SINGLE `...`-suffixed path (the documented default, e.g.
-          # "./internal/...") fails silently -- gremlins doesn't understand
-          # the glob, prints "No results to report." and still exits 0, a
-          # vacuous pass (zero mutants tested, gate still green). Loop over
-          # each entry instead, stripping the trailing "/..." each one
-          # carries for go-test-flag compatibility, running gremlins once
-          # per package and propagating the worst exit code + minimum score
-          # across the run. Mirrors the fix already applied in
-          # ffreis-platform-configctl's own Makefile `mutation:` target.
+          if [[ "${DIFF_RESULT:-}" == "empty" ]]; then
+            echo "score=100" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Mutation Score::Nothing to mutate — marking as passed."
+            exit 0
+          fi
+
           exit_code=0
           min_score=""
-          for pkg in "${packages_arr[@]}"; do
-            path="${pkg%/...}"
-            echo "==> gremlins unleash $path"
-            output=$(gremlins unleash --threshold-efficacy="$THRESHOLD" "$path" 2>&1) || exit_code=1
-            echo "$output"
 
-            # Extract score from gremlins summary line: "Test efficacy: XX.XX%"
+          # Shared per-invocation runner: gremlins' `unleash [path]` takes
+          # exactly ONE plain directory path (never a go-list `...` pattern,
+          # never several space-separated paths — more than one array
+          # element in a single call fails loudly with "accepts at most 1
+          # arg(s)"). "No results to report" (nothing mutable at this path —
+          # e.g. an empty or fully-excluded directory) is counted as a skip,
+          # not folded into min_score as 0: that distinction is what keeps a
+          # trivial/empty package from dragging an otherwise-healthy score
+          # down to a vacuous fail.
+          run_gremlins() {
+            local path="$1"; shift
+            local output pkg_score
+            output=$(gremlins unleash --threshold-efficacy="$THRESHOLD" "$@" "$path" 2>&1) || exit_code=1
+            echo "$output"
+            if grep -q 'No results to report' <<< "$output"; then
+              return
+            fi
             pkg_score=$(echo "$output" | grep -ioE 'efficacy:[[:space:]]*[0-9]+' | grep -oE '[0-9]+' | head -1 || echo "0")
             if [[ -z "$min_score" || "$pkg_score" -lt "$min_score" ]]; then
               min_score="$pkg_score"
             fi
-          done
+          }
+
+          if [[ "${IN_DIFF:-false}" == "true" ]]; then
+            # Whole-diff scope, not `packages`: gremlins' --diff only matches
+            # correctly at the module root (see the in-diff input's own
+            # description for why) — packages-based scoping does not apply
+            # to this invocation.
+            echo "==> gremlins unleash --diff ${DIFF_BASE} ."
+            run_gremlins "." --diff "$DIFF_BASE"
+          else
+            # gremlins' `unleash [path]` takes exactly ONE plain directory
+            # path: not a go-list `...` pattern, and not several
+            # space-separated paths in one call. More than one array element
+            # in a single invocation fails loudly ("accepts at most 1
+            # arg(s)"), but a SINGLE `...`-suffixed path (the documented
+            # default, e.g. "./internal/...") fails silently -- gremlins
+            # doesn't understand the glob, prints "No results to report."
+            # and still exits 0, a vacuous pass (zero mutants tested, gate
+            # still green). Loop over each entry instead, stripping the
+            # trailing "/..." each one carries for go-test-flag
+            # compatibility, running gremlins once per package and
+            # propagating the worst exit code + minimum score across the
+            # run. Mirrors the fix already applied in
+            # ffreis-platform-configctl's own Makefile `mutation:` target.
+            read -r -a packages_arr <<< "${PACKAGES:-}"
+            for pkg in "${packages_arr[@]}"; do
+              path="${pkg%/...}"
+              echo "==> gremlins unleash $path"
+              run_gremlins "$path"
+            done
+          fi
 
           score="${min_score:-0}"
           echo "score=${score}" >> "$GITHUB_OUTPUT"

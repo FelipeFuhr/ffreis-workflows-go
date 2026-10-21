@@ -140,6 +140,39 @@ container build, fuzzing, mutation testing, and OSV scanning.
     state the exclusion in `sonar-project.properties`
     (`sonar.coverage.exclusions`) or the two will disagree about the same code.
 
+12. **`go-mutation.yml`'s `in-diff` input ALWAYS calls gremlins with path
+    ".", never the `packages` loop, and that is load-bearing, not an
+    oversight.** Probed directly against the real binary (v0.6.0, latest —
+    nothing newer exists): gremlins compares each mutant's AST position
+    (recorded relative to whatever directory `unleash [path]` was given) to
+    its own `git diff --merge-base` output (always REPO-ROOT-relative,
+    no `--relative` equivalent). Invoke it per-package the way the non-diff
+    path does (`gremlins unleash --diff <ref> internal`) and EVERY mutant
+    mismatches and reports SKIPPED — including ones in files the diff did
+    change (reproduced: a diff touching only `internal/b.go` scored
+    "Test efficacy: 0.00%" against `internal`, and correctly 100% against
+    `.`). This means `in-diff: true` only works when a caller's
+    `working-directory` IS the git repository root — the "Compute PR diff
+    for --diff" step fails loudly if it isn't, rather than silently scoring
+    every mutant SKIPPED. Do not try to make `in-diff` package-scoped; that
+    reintroduces the exact bug this input was built to avoid.
+
+    Separately, gremlins' own `Diff.IsChanged` returns `true` for every
+    position when its diff is empty — an empty diff makes gremlins silently
+    fall back to a FULL run, not the fast no-op you'd expect. The workflow
+    computes the merge-base diff itself first (non-test `*.go` files only)
+    and skips invoking gremlins entirely when it's empty, rather than
+    trusting gremlins' own fallback.
+
+    Validated via `act` against a throwaway harness (real calculator-style
+    mutants + a synthetic `pull_request` event), not just reasoned about —
+    see the PR that introduced this input for the transcript. Neither
+    `self-test.yml` nor `ci.yml` can exercise `in-diff` directly: they are
+    push/non-draft-PR triggered and this input's effective condition is
+    `github.event_name == 'pull_request'`, so any self-test job that sets
+    `in-diff: true` silently runs the ordinary non-diff path instead — don't
+    mistake a green self-test run for proof this input works.
+
 ## Structure
 
 ```
