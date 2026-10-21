@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.8.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.7.0...v1.8.0) (2026-10-21)
+
+
+### Features
+
+* **mutation:** add in-diff incremental mode to go-mutation.yml ([#122](https://github.com/FelipeFuhr/ffreis-workflows-go/issues/122)) ([9471623](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/94716233cc56fcf387079e1b292c41a2ce4e70b0))
+* **sonar:** route through the shared local-fallback composite ([6ba2c9b](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/6ba2c9bae6cd301b29de36430775ec986526ebf3))
+
+
+### Bug Fixes
+
+* **sonar:** wire run_on_draft into the job gate ([d1dcd4f](https://github.com/FelipeFuhr/ffreis-workflows-go/commit/d1dcd4fa9f2d549241bf1c61945328b7be6a5fb0))
+
 ## [1.7.0](https://github.com/FelipeFuhr/ffreis-workflows-go/compare/v1.6.0...v1.7.0) (2026-09-24)
 
 
